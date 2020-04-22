@@ -1,0 +1,21 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.hadroncfy.sreplay.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [
+    "MixinCommandManager",
+    "MixinMinecraftServer",
+    "PlayerSpawnS2CPacketAccessor"
+  ],
+  "client": [
+    "MixinIntegratedServer"
+  ],
+  "server": [
+    "MixinMinecraftDedicatedServer"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "refmap": "sreplay-refmap.json"
+}

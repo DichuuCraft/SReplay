@@ -1,0 +1,36 @@
+{
+    "schemaVersion": 1,
+    "id": "test-mod",
+    "version": "${version}",
+  
+    "name": "Example Mod",
+    "description": "Test mod",
+    "authors": [
+      "Me!"
+    ],
+    "contact": {
+      "homepage": "https://fabricmc.net/",
+      "sources": "https://github.com/FabricMC/fabric-example-mod"
+    },
+  
+    "license": "CC0-1.0",
+    "icon": "assets/modid/icon.png",
+  
+    "environment": "*",
+    "entrypoints": {
+      "main": [
+        "com.hadroncfy.sreplay.Main"
+      ]
+    },
+    "mixins": [
+      "test.mixins.json"
+    ],
+  
+    "depends": {
+      "fabricloader": ">=0.7.4",
+      "minecraft": "1.14.*"
+    },
+    "suggests": {
+      "flamingo": "*"
+    }
+  }
