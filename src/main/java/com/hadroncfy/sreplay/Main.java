@@ -2,6 +2,8 @@ package com.hadroncfy.sreplay;
 
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.PlayerManager;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.dimension.DimensionType;
 
@@ -19,11 +21,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-import com.google.gson.Gson;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonSyntaxException;
+import com.hadroncfy.sreplay.config.Config;
+import com.hadroncfy.sreplay.config.Formats;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -32,36 +35,56 @@ public class Main implements ModInitializer {
     private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy_MM_dd_HH_mm_ss");
 
     private static final Logger LOGGER = LogManager.getLogger();
-    private static final Map<String, Photographer> fakes = new HashMap<>();
     private static Config config;
-
-    public static Photographer getFake(String name) {
-        return fakes.get(name);
-    }
-
+    
     public static Photographer createFake(MinecraftServer server, String name, DimensionType dim, Vec3d pos, File recordingFile)
             throws IOException {
-        Photographer p = Photographer.create(name, server, dim, config.sizeLimit);
+        Photographer p = Photographer.create(name, server, dim, config.sizeLimit, config.autoReconnect);
         p.connect(recordingFile);
         p.tp(pos.x, pos.y, pos.z);
-        fakes.put(name, p);
         return p;
     }
 
-    public static void killFake(Photographer p) {
-        fakes.remove(p.getGameProfile().getName());
-        p.kill();
+    public static void killAllFakes(MinecraftServer server) {
+        listFakes(server).forEach(p -> p.kill());
     }
 
-    public static void killAllFakes() {
-        fakes.forEach((k, v) -> v.kill());
-        fakes.clear();
+    public static void killAllFakes(PlayerManager pm) {
+        listFakes(pm).forEach(p -> p.kill());
     }
 
-    public static Collection<String> listFakes() {
-        Collection<String> ret = new ArrayList<>();
-        fakes.forEach((k, v) -> ret.add(k));
+    public static Collection<Photographer> listFakes(MinecraftServer server){
+        return listFakes(server.getPlayerManager());
+    }
+
+    public static Collection<Photographer> listFakes(PlayerManager pm){
+        Collection<Photographer> ret = new ArrayList<>();
+        for (ServerPlayerEntity player: pm.getPlayerList()){
+            if (player instanceof Photographer){
+                ret.add((Photographer) player);
+            }
+        }
         return ret;
+    }
+
+    public static boolean checkForRecordingDupe(MinecraftServer server, File f){
+        if (f.exists()){
+            return true;
+        }
+        for (Photographer p: listFakes(server)){
+            if (f.equals(p.getRecorder().getOutputPath())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static Photographer getFake(MinecraftServer server, String name){
+        ServerPlayerEntity player = server.getPlayerManager().getPlayer(name);
+        if (player != null && player instanceof Photographer){
+            return (Photographer) player;
+        }
+        return null;
     }
 
     public static List<File> listRecordings() {
@@ -69,22 +92,26 @@ public class Main implements ModInitializer {
     }
 
     public static void loadConfig() throws IOException {
-        Gson gson = new Gson();
         File file = new File("config", "sreplay.json");
         if (file.exists()){
             try (Reader reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8)){
-                config = gson.fromJson(reader, Config.class);
+                config = Config.GSON.fromJson(reader, Config.class);
             }
         }
         else {
+            config = new Config();
             try (Writer writer = new OutputStreamWriter(new FileOutputStream(file))){
-                writer.write(gson.toJson(config));
+                writer.write(Config.GSON.toJson(config));
             }
         }
     }
 
     public static Config getConfig(){
         return config;
+    }
+
+    public static Formats getFormats(){
+        return config.formats;
     }
 
     public static boolean recordingExists(String name){
@@ -107,7 +134,7 @@ public class Main implements ModInitializer {
             Main.loadConfig();
             LOGGER.info("Loaded config");
         }
-        catch(IOException e) {
+        catch(IOException | JsonParseException e) {
             LOGGER.error("Failed to load config: " + e);
         }
 

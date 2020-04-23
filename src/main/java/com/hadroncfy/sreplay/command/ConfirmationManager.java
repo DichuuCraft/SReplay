@@ -24,7 +24,9 @@ public class ConfirmationManager {
             if (h != null){
                 h.t.cancel();
                 h.handler.onConfirm(code.equals(h.code), false);
-                confirms.remove(label);
+                if (code.equals(h.code)){
+                    confirms.remove(label);
+                }
                 return true;
             }
             return false;

@@ -11,6 +11,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import com.hadroncfy.sreplay.config.TextRenderer;
 import com.hadroncfy.sreplay.mixin.PlayerSpawnS2CPacketAccessor;
 import com.mojang.authlib.GameProfile;
 import com.replaymod.replaystudio.replay.ReplayFile;
@@ -25,7 +26,6 @@ import net.minecraft.network.packet.s2c.login.LoginSuccessS2CPacket;
 import net.minecraft.network.packet.s2c.play.DisconnectS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerSpawnS2CPacket;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.text.LiteralText;
 import net.minecraft.util.PacketByteBuf;
 
 import org.apache.logging.log4j.LogManager;
@@ -57,7 +57,9 @@ public class Recorder implements IPacketListener {
     private long bytesRecorded = 0; 
     private boolean paused = false;
 
-    private final long sizeLimit;
+    private long sizeLimit;
+
+    private ISizeLimitExceededListener limiter = null;
 
     public Recorder(GameProfile profile, MinecraftServer server, File outputPath, long sizeLimit) throws IOException {
         this.server = server;
@@ -69,6 +71,18 @@ public class Recorder implements IPacketListener {
         replayFile = new ZipReplayFile(new ReplayStudio(), outputPath);
         packetSaveStream = new DataOutputStream(replayFile.writePacketData(true));
         metaData = new ReplayMetaData();
+    }
+
+    public void setOnSizeLimitExceededListener(ISizeLimitExceededListener l){
+        limiter = l;
+    }
+
+    public File getOutputPath(){
+        return outputPath;
+    }
+
+    public void setSizeLimit(long l){
+        sizeLimit = l;
     }
 
     public long getStartTime(){
@@ -84,7 +98,7 @@ public class Recorder implements IPacketListener {
         metaData.setDate(startTime);
         metaData.setMcVersion("1.14.4");
         server.getPlayerManager()
-            .broadcastChatMessage(new LiteralText("Started recording for player " + profile.getName()), true);
+            .broadcastChatMessage(TextRenderer.render(Main.getFormats().startedRecording, profile.getName()), true);
 
         // Must contain this packet, otherwise ReplayMod would complain
         savePacket(new LoginSuccessS2CPacket(profile));
@@ -110,6 +124,13 @@ public class Recorder implements IPacketListener {
     }
 
     private void savePacket(Packet<?> packet) {
+        if (sizeLimit != -1 && bytesRecorded > sizeLimit){
+            stop();
+            if (limiter != null){
+                limiter.onSizeLimitExceeded(bytesRecorded);
+            }
+            return;
+        }
         try {
             byte[] pb = getPacketBytes(packet);
             final long now = System.currentTimeMillis();
@@ -146,7 +167,7 @@ public class Recorder implements IPacketListener {
     public void saveRecording() {
         metaData.setDuration((int) lastPacket);
         server.getPlayerManager()
-                .broadcastChatMessage(new LiteralText("Saving replay file for " + profile.getName()), true);
+                .broadcastChatMessage(TextRenderer.render(Main.getFormats().savingRecordingFile, profile.getName()), true);
         new Thread(() -> {
             saveService.shutdown();
             try {
@@ -163,11 +184,11 @@ public class Recorder implements IPacketListener {
                     replayFile.save();
                     replayFile.close();
                     server.getPlayerManager()
-                            .broadcastChatMessage(new LiteralText("Saved replay file " + outputPath.getName() + " for " + profile.getName()), true);
+                            .broadcastChatMessage(TextRenderer.render(Main.getFormats().savedRecordingFile, profile.getName(), outputPath.getName()), true);
                 }
             } catch (IOException e) {
                 server.getPlayerManager().broadcastChatMessage(
-                        new LiteralText("Failed to save replay file for " + profile.getName() + ": " + e), true);
+                        TextRenderer.render(Main.getFormats().failedToSaveRecordingFile, profile.getName(), e.toString()), true);
             }
         }).start(); 
     }
