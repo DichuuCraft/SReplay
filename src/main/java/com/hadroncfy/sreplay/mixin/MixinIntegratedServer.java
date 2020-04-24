@@ -2,12 +2,8 @@ package com.hadroncfy.sreplay.mixin;
 
 import java.io.File;
 import java.net.Proxy;
-import java.util.ArrayList;
-import java.util.List;
 
 import com.hadroncfy.sreplay.Main;
-import com.hadroncfy.sreplay.interfaces.IServer;
-import com.hadroncfy.sreplay.recording.IGamePausedListener;
 import com.mojang.authlib.GameProfileRepository;
 import com.mojang.authlib.minecraft.MinecraftSessionService;
 import com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService;

@@ -1,35 +1,35 @@
 {
-    "schemaVersion": 1,
-    "id": "sreplay",
-    "version": "${version}",
-  
-    "name": "SReplay",
-    "description": "Test mod",
-    "authors": [
-      "hadroncfy"
-    ],
-    "contact": {
-      "homepage": "https://github.com/DichuuCraft/SReplay",
-      "sources": "https://github.com/DichuuCraft/SReplay"
-    },
-  
-    "license": "MIT",
-  
-    "environment": "*",
-    "entrypoints": {
-      "main": [
-        "com.hadroncfy.sreplay.Main"
-      ]
-    },
-    "mixins": [
-      "test.mixins.json"
-    ],
-  
-    "depends": {
-      "fabricloader": ">=0.7.4",
-      "minecraft": "1.14.*"
-    },
-    "suggests": {
-      "flamingo": "*"
-    }
+  "schemaVersion": 1,
+  "id": "sreplay",
+  "version": "${version}",
+
+  "name": "SReplay",
+  "description": "Server side recording mod for ReplayMod",
+  "authors": [
+    "hadroncfy"
+  ],
+  "contact": {
+    "homepage": "https://github.com/DichuuCraft/SReplay",
+    "sources": "https://github.com/DichuuCraft/SReplay"
+  },
+
+  "license": "MIT",
+
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.hadroncfy.sreplay.Main"
+    ]
+  },
+  "mixins": [
+    "test.mixins.json"
+  ],
+
+  "depends": {
+    "fabricloader": ">=0.7.4",
+    "minecraft": "1.14.*"
+  },
+  "suggests": {
+    "flamingo": "*"
   }
+}

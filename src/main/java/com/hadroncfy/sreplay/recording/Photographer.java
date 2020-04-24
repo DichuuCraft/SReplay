@@ -26,7 +26,6 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
-import net.minecraft.world.dimension.Dimension;
 import net.minecraft.world.dimension.DimensionType;
 
 import org.apache.logging.log4j.LogManager;
@@ -147,6 +146,10 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     }
 
     public void kill(Runnable r, boolean async) {
+        if (tablistUpdater != null){
+            tablistUpdater.cancel();
+            tablistUpdater = null;
+        }
         if (recorder != null){
             recorder.stop();
             recorder.saveRecording();
@@ -166,10 +169,6 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         else {
             task.run();
         }
-        if (tablistUpdater != null){
-            tablistUpdater.cancel();
-            tablistUpdater = null;
-        }
     }
 
     @Override
@@ -179,7 +178,6 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
 
     public void onPause() {
         if (recorder != null){
-            LOGGER.info("Game paused");
             recorder.setPaused();
         }        
     }

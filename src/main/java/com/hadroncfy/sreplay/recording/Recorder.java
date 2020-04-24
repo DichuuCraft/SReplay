@@ -55,6 +55,7 @@ public class Recorder implements IPacketListener {
     private long timePassedWhilePaused = 0;
     private NetworkState nstate = NetworkState.LOGIN;
     private boolean stopped = false;
+    private boolean isSaving = false;
     private long bytesRecorded = 0; 
     private boolean paused = false;
 
@@ -174,32 +175,38 @@ public class Recorder implements IPacketListener {
     }
 
     public void saveRecording() {
-        metaData.setDuration((int) lastPacket);
-        server.getPlayerManager()
-                .broadcastChatMessage(TextRenderer.render(Main.getFormats().savingRecordingFile, profile.getName()), true);
-        new Thread(() -> {
-            saveService.shutdown();
-            try {
-                saveService.awaitTermination(10, TimeUnit.SECONDS);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            try {
-                synchronized (replayFile) {
-                    String[] players = new String[uuids.size()];
-                    uuids.stream().map(uuid -> uuid.toString()).collect(Collectors.toList()).toArray(players);
-                    metaData.setPlayers(players);
-                    replayFile.writeMetaData(metaData);
-                    replayFile.save();
-                    replayFile.close();
-                    server.getPlayerManager()
-                            .broadcastChatMessage(TextRenderer.render(Main.getFormats().savedRecordingFile, profile.getName(), outputPath.getName()), true);
+        if (!isSaving){
+            isSaving = true;
+            metaData.setDuration((int) lastPacket);
+            server.getPlayerManager()
+                    .broadcastChatMessage(TextRenderer.render(Main.getFormats().savingRecordingFile, profile.getName()), true);
+            new Thread(() -> {
+                saveService.shutdown();
+                try {
+                    saveService.awaitTermination(10, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
-            } catch (IOException e) {
-                server.getPlayerManager().broadcastChatMessage(
-                        TextRenderer.render(Main.getFormats().failedToSaveRecordingFile, profile.getName(), e.toString()), true);
-            }
-        }).start(); 
+                try {
+                    synchronized (replayFile) {
+                        String[] players = new String[uuids.size()];
+                        uuids.stream().map(uuid -> uuid.toString()).collect(Collectors.toList()).toArray(players);
+                        metaData.setPlayers(players);
+                        replayFile.writeMetaData(metaData);
+                        replayFile.save();
+                        replayFile.close();
+                        server.getPlayerManager()
+                                .broadcastChatMessage(TextRenderer.render(Main.getFormats().savedRecordingFile, profile.getName(), outputPath.getName()), true);
+                    }
+                } catch (IOException e) {
+                    server.getPlayerManager().broadcastChatMessage(
+                            TextRenderer.render(Main.getFormats().failedToSaveRecordingFile, profile.getName(), e.toString()), true);
+                }
+            }).start(); 
+        }
+        else {
+            LOGGER.warn("saveRecording() called twice");
+        }
     }
 
     @Override
