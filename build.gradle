@@ -19,13 +19,24 @@ configurations {
 	implementation.extendsFrom shade
 }
 
+def shadeExclusions = {
+}
+
 shadowJar {
 	from project.configurations.shade
 	configurations = [
 		project.configurations.shade
 	]
 	exclude '.files.swp'
+	exclude 'mojang-translations'
+	exclude 'com/google/**'
+
 	classifier = 'all-unremapped'
+
+	relocate 'org.apache.commons', 'com.hadroncfy.libs.apache'
+	relocate 'com.replaymod.replaystudio', 'com.hadroncfy.libs.replaystudio'
+	relocate 'net.md_5.bungee', 'com.hadroncfy.libs.bungee'
+	relocate 'com.github.steveice10', 'com.hadroncfy.libs.steveice10'
 }
 
 dependencies {
@@ -40,7 +51,7 @@ dependencies {
 	// PSA: Some older mods, compiled on Loom 0.2.1, might have outdated Maven POMs.
 	// You may need to force-disable transitiveness on them.
 
-	shade "com.github.ReplayMod.ReplayStudio:1.14.4:be6a680"
+	shade "com.github.ReplayMod.ReplayStudio:1.14.4:be6a680", shadeExclusions
 	compileOnly "com.google.code.gson:gson:2.8.6"
 }
 

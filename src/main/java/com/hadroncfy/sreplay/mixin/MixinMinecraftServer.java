@@ -16,9 +16,14 @@ public abstract class MixinMinecraftServer {
 
     @Shadow
     public abstract PlayerManager getPlayerManager();
+
+    @Shadow
+    public abstract boolean isDedicated();
     
-    @Inject(method = "shutdown", at = @At("INVOKE"))
+    @Inject(method = "shutdown", at = @At("HEAD"))
     public void onShutdown(CallbackInfo ci){
-        Main.killAllFakes(getPlayerManager(), false);
+        if (isDedicated()){
+            Main.killAllFakes(getPlayerManager(), false);
+        }
     }
 }

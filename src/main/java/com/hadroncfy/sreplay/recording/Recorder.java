@@ -90,6 +90,14 @@ public class Recorder implements IPacketListener {
         return startTime;
     }
 
+    public boolean isPaused(){
+        return paused;
+    }
+
+    public long getRecordedTime(){
+        return System.currentTimeMillis() - startTime - timePassedWhilePaused;
+    }
+
     public void start() {
         startTime = System.currentTimeMillis();
         

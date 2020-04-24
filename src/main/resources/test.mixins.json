@@ -6,13 +6,13 @@
   "mixins": [
     "MixinCommandManager",
     "MixinMinecraftServer",
-    "PlayerSpawnS2CPacketAccessor"
+    "PlayerSpawnS2CPacketAccessor",
+    "PlayerManagerAccessor"
   ],
   "client": [
     "MixinIntegratedServer"
   ],
   "server": [
-    "MixinMinecraftDedicatedServer"
   ],
   "injectors": {
     "defaultRequire": 1

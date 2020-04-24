@@ -3,6 +3,6 @@ package com.hadroncfy.sreplay.interfaces;
 import com.hadroncfy.sreplay.recording.IGamePausedListener;
 
 public interface IServer {
-    void setOnPauseListener(IGamePausedListener l);
+    void addOnPauseListener(IGamePausedListener l);
     boolean isIntegratedServer();
 }

@@ -189,7 +189,7 @@ public class SReplayCommand {
         final Photographer p = requirePlayer(ctx);
         if (p != null){
             Vec3d pos = ctx.getSource().getPosition();
-            p.tp(pos.x, pos.y, pos.z);
+            p.tp(ctx.getSource().getWorld().getDimension().getType(), pos.x, pos.y, pos.z);
             ctx.getSource().getMinecraftServer().getPlayerManager().broadcastChatMessage(TextRenderer.render(Main.getFormats().teleportedBotToYou, p.getGameProfile().getName(), ctx.getSource().getName()), true);
             LOGGER.info("Teleported " + p.getGameProfile().getName() + " to " + ctx.getSource().getName());
             return 1;

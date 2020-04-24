@@ -7,12 +7,13 @@ import java.util.TimerTask;
 
 import com.hadroncfy.sreplay.Main;
 import com.hadroncfy.sreplay.config.TextRenderer;
-import com.hadroncfy.sreplay.interfaces.IServer;
+import com.hadroncfy.sreplay.mixin.PlayerManagerAccessor;
 import com.mojang.authlib.GameProfile;
 
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.network.NetworkSide;
 import net.minecraft.network.packet.s2c.play.PlayerListS2CPacket;
+import net.minecraft.network.packet.s2c.play.PlayerRespawnS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerListS2CPacket.Action;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.ServerTask;
@@ -23,15 +24,17 @@ import net.minecraft.text.LiteralText;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
+import net.minecraft.world.dimension.Dimension;
 import net.minecraft.world.dimension.DimensionType;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 
-public class Photographer extends ServerPlayerEntity implements IGamePausedListener, ISizeLimitExceededListener {
-
+public class Photographer extends ServerPlayerEntity implements ISizeLimitExceededListener {
+    private static final GameMode MODE = GameMode.SPECTATOR;
     private static final Logger LOGGER = LogManager.getLogger();
     private long sizeLimit;
     private boolean autoReconnect;
@@ -44,16 +47,16 @@ public class Photographer extends ServerPlayerEntity implements IGamePausedListe
         super(server, world, profile, im);
         this.sizeLimit = sizeLimit;
         this.autoReconnect = autoReconnect;
-        if (((IServer) server).isIntegratedServer()){
-            ((IServer) server).setOnPauseListener(this);
-        }
     }
 
-    public static Photographer create(String name, MinecraftServer server, DimensionType dim, long sizeLimit, boolean autoReconnect){
+    public static Photographer create(String name, MinecraftServer server, DimensionType dim, Vec3d pos, long sizeLimit, boolean autoReconnect){
         GameProfile profile = new GameProfile(PlayerEntity.getOfflinePlayerUuid(name), name);
         ServerWorld world = server.getWorld(dim);
         ServerPlayerInteractionManager im = new ServerPlayerInteractionManager(world);
-        return new Photographer(server, world, profile, im, sizeLimit, autoReconnect);
+        Photographer ret = new Photographer(server, world, profile, im, sizeLimit, autoReconnect);
+        ret.updatePosition(pos.x, pos.y, pos.z);
+        ((PlayerManagerAccessor)server.getPlayerManager()).getSaveHandler().savePlayerData(ret);
+        return ret;
     }
 
     public void connect(File outputPath) throws IOException {
@@ -67,14 +70,16 @@ public class Photographer extends ServerPlayerEntity implements IGamePausedListe
         tablistUpdater.scheduleAtFixedRate(new TimerTask(){
             @Override
             public void run() {
-                server.getPlayerManager().sendToAll(new PlayerListS2CPacket(Action.UPDATE_DISPLAY_NAME, Photographer.this));
+                if (!recorder.isPaused()){
+                    server.getPlayerManager().sendToAll(new PlayerListS2CPacket(Action.UPDATE_DISPLAY_NAME, Photographer.this));
+                }
             }
         }, 1000, 1000);
 
         setHealth(20.0F);
         removed = false;
         server.getPlayerManager().onPlayerConnect(connection, this);
-        interactionManager.setGameMode(GameMode.SPECTATOR);
+        interactionManager.setGameMode(MODE);
         getServerWorld().getChunkManager().updateCameraPosition(this);
     }
 
@@ -93,7 +98,7 @@ public class Photographer extends ServerPlayerEntity implements IGamePausedListe
         if (recorder == null){
             return null;
         }
-        long duration = (System.currentTimeMillis() - recorder.getStartTime()) / 1000;
+        long duration = recorder.getRecordedTime() / 1000;
         long sec = duration % 60;
         duration /= 60;
         long min = duration % 60;
@@ -119,7 +124,17 @@ public class Photographer extends ServerPlayerEntity implements IGamePausedListe
         return ret;
     }
 
-    public void tp(double x, double y, double z) {
+    public void tp(DimensionType dim, double x, double y, double z) {
+        if (dimension != dim){
+            ServerWorld oldMonde = server.getWorld(dimension), nouveau = server.getWorld(dim);
+            oldMonde.removePlayer(this);
+            removed = false;
+            setWorld(nouveau);
+            server.getPlayerManager().sendWorldInfo(this, nouveau);
+            interactionManager.setWorld(nouveau);
+            networkHandler.sendPacket(new PlayerRespawnS2CPacket(dim, nouveau.getGeneratorType(), MODE));
+            nouveau.method_18211(this);
+        }
         requestTeleport(x, y, z);
     }
 
@@ -162,9 +177,9 @@ public class Photographer extends ServerPlayerEntity implements IGamePausedListe
         return false;
     }
 
-    @Override
     public void onPause() {
         if (recorder != null){
+            LOGGER.info("Game paused");
             recorder.setPaused();
         }        
     }

@@ -39,9 +39,9 @@ public class Main implements ModInitializer {
     
     public static Photographer createFake(MinecraftServer server, String name, DimensionType dim, Vec3d pos, File recordingFile)
             throws IOException {
-        Photographer p = Photographer.create(name, server, dim, config.sizeLimit, config.autoReconnect);
+        Photographer p = Photographer.create(name, server, dim, pos, config.sizeLimit, config.autoReconnect);
         p.connect(recordingFile);
-        p.tp(pos.x, pos.y, pos.z);
+        // p.tp(dim, pos.x, pos.y, pos.z);
         return p;
     }
 
@@ -50,6 +50,8 @@ public class Main implements ModInitializer {
     }
 
     public static void killAllFakes(PlayerManager pm, boolean async) {
+        LOGGER.info("Killing all fakes");
+        listFakes(pm).forEach(p -> LOGGER.info("Fake: " + p.getGameProfile().getName()));
         listFakes(pm).forEach(p -> p.kill(null, async));
     }
 
@@ -128,7 +130,7 @@ public class Main implements ModInitializer {
     public void onInitialize() {
         try {
             Main.loadConfig();
-            LOGGER.info("Loaded config");
+            LOGGER.info("SReplay: Loaded config");
         }
         catch(IOException | JsonParseException e) {
             LOGGER.error("Failed to load config: " + e);
