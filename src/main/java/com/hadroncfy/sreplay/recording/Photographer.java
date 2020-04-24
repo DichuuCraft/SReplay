@@ -1,10 +1,11 @@
-package com.hadroncfy.sreplay;
+package com.hadroncfy.sreplay.recording;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import com.hadroncfy.sreplay.Main;
 import com.hadroncfy.sreplay.config.TextRenderer;
 import com.hadroncfy.sreplay.interfaces.IServer;
 import com.mojang.authlib.GameProfile;
@@ -127,22 +128,29 @@ public class Photographer extends ServerPlayerEntity implements IGamePausedListe
     }
 
     public void kill(){
-        kill(null);
+        kill(null, true);
     }
 
-    public void kill(Runnable r) {
+    public void kill(Runnable r, boolean async) {
         if (recorder != null){
             recorder.stop();
             recorder.saveRecording();
             recorder = null;
         }
-
-        server.send(new ServerTask(server.getTicks(), () -> {
-            networkHandler.onDisconnected(new LiteralText("Killed"));
+        Runnable task =  () -> {
+            if (networkHandler != null){
+                networkHandler.onDisconnected(new LiteralText("Killed"));
+            }
             if (r != null){
                 r.run();
             }
-        }));
+        };
+        if (async){
+            server.send(new ServerTask(server.getTicks(), task));
+        }
+        else {
+            task.run();
+        }
         if (tablistUpdater != null){
             tablistUpdater.cancel();
             tablistUpdater = null;
@@ -175,7 +183,7 @@ public class Photographer extends ServerPlayerEntity implements IGamePausedListe
                     e.printStackTrace();
                 }
             }
-        });
+        }, true);
     }
 
     public void setSizeLimit(long l){

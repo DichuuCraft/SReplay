@@ -11,7 +11,7 @@ sourceCompatibility = JavaVersion.VERSION_1_8
 targetCompatibility = JavaVersion.VERSION_1_8
 
 archivesBaseName = project.archives_base_name
-version = project.mod_version
+version = project.minecraft_version+'-'+project.mod_version
 group = project.maven_group
 
 configurations {
@@ -25,6 +25,7 @@ shadowJar {
 		project.configurations.shade
 	]
 	exclude '.files.swp'
+	classifier = 'all-unremapped'
 }
 
 dependencies {
@@ -75,12 +76,12 @@ jar {
 	from "LICENSE"
 }
 
-defaultTasks 'remapShadowJar'
-
 build.dependsOn shadowJar
 
 task remapShadowJar(type: net.fabricmc.loom.task.RemapJarTask, dependsOn: shadowJar) {
 	input = tasks.shadowJar.archiveFile
-	archiveFileName = tasks.shadowJar.archiveFileName.get() + '.remapped.jar'
+	classifier = 'all'
 	addNestedDependencies.set(true)
 }
+
+defaultTasks 'remapShadowJar'

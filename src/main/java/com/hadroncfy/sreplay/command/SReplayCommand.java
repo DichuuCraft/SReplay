@@ -1,8 +1,8 @@
 package com.hadroncfy.sreplay.command;
 
 import com.hadroncfy.sreplay.Main;
-import com.hadroncfy.sreplay.Photographer;
 import com.hadroncfy.sreplay.config.TextRenderer;
+import com.hadroncfy.sreplay.recording.Photographer;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
@@ -261,7 +261,7 @@ public class SReplayCommand {
                     src.sendFeedback(TextRenderer.render(Main.getFormats().failedToStartRecording, e.toString()), false);
                     e.printStackTrace();
                 }
-            });
+            }, true);
             return 1;
         }
         return 0;

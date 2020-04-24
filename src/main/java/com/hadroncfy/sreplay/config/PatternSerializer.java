@@ -2,6 +2,7 @@ package com.hadroncfy.sreplay.config;
 
 import java.lang.reflect.Type;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;
@@ -21,7 +22,12 @@ public class PatternSerializer implements JsonDeserializer<Pattern>, JsonSeriali
     @Override
     public Pattern deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
             throws JsonParseException {
-        return Pattern.compile(json.getAsString());
+        try {
+            return Pattern.compile(json.getAsString());
+        }
+        catch(PatternSyntaxException e){
+            throw new JsonParseException("Failed to parse pattern", e);
+        }
     }
 
 }

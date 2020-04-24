@@ -19,6 +19,6 @@ public abstract class MixinMinecraftServer {
     
     @Inject(method = "shutdown", at = @At("INVOKE"))
     public void onShutdown(CallbackInfo ci){
-        Main.killAllFakes(getPlayerManager());
+        Main.killAllFakes(getPlayerManager(), false);
     }
 }

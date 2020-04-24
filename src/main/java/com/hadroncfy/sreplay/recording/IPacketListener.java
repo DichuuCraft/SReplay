@@ -1,4 +1,4 @@
-package com.hadroncfy.sreplay;
+package com.hadroncfy.sreplay.recording;
 
 import net.minecraft.network.Packet;
 

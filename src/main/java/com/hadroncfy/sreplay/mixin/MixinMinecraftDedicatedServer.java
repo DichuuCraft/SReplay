@@ -1,7 +1,7 @@
 package com.hadroncfy.sreplay.mixin;
 
-import com.hadroncfy.sreplay.IGamePausedListener;
 import com.hadroncfy.sreplay.interfaces.IServer;
+import com.hadroncfy.sreplay.recording.IGamePausedListener;
 
 import org.spongepowered.asm.mixin.Mixin;
 

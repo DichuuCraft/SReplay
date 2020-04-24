@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.hadroncfy.sreplay.recording.Photographer;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
 import net.minecraft.server.MinecraftServer;

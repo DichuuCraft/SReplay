@@ -24,9 +24,9 @@ import java.util.Collection;
 import java.util.List;
 
 import com.google.gson.JsonParseException;
-import com.google.gson.JsonSyntaxException;
 import com.hadroncfy.sreplay.config.Config;
 import com.hadroncfy.sreplay.config.Formats;
+import com.hadroncfy.sreplay.recording.Photographer;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -45,12 +45,12 @@ public class Main implements ModInitializer {
         return p;
     }
 
-    public static void killAllFakes(MinecraftServer server) {
-        listFakes(server).forEach(p -> p.kill());
+    public static void killAllFakes(MinecraftServer server, boolean async) {
+        listFakes(server).forEach(p -> p.kill(null, async));
     }
 
-    public static void killAllFakes(PlayerManager pm) {
-        listFakes(pm).forEach(p -> p.kill());
+    public static void killAllFakes(PlayerManager pm, boolean async) {
+        listFakes(pm).forEach(p -> p.kill(null, async));
     }
 
     public static Collection<Photographer> listFakes(MinecraftServer server){
@@ -114,10 +114,6 @@ public class Main implements ModInitializer {
         return config.formats;
     }
 
-    public static boolean recordingExists(String name){
-        return new File(config.savePath, name).exists();
-    }
-
     public static File getDefaultRecordingFile(){
         return new File(config.savePath, sdf.format(Calendar.getInstance().getTime()) + ".mcpr");
     }
@@ -136,6 +132,8 @@ public class Main implements ModInitializer {
         }
         catch(IOException | JsonParseException e) {
             LOGGER.error("Failed to load config: " + e);
+            e.printStackTrace();
+            config = new Config();
         }
 
         File output = new File(config.savePath);

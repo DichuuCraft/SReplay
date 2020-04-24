@@ -1,4 +1,4 @@
-package com.hadroncfy.sreplay;
+package com.hadroncfy.sreplay.recording;
 
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
@@ -17,6 +17,13 @@ public class HackyClientConnection extends ClientConnection {
     @Override
     public void send(Packet<?> packet, GenericFutureListener<? extends Future<? super Void>> callback) {
         p.onPacket(packet);
+        if (callback != null){
+            try {
+                callback.operationComplete(null);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     @Override

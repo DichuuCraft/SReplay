@@ -1,4 +1,4 @@
-package com.hadroncfy.sreplay;
+package com.hadroncfy.sreplay.recording;
 
 import java.io.DataOutputStream;
 import java.io.File;
@@ -11,6 +11,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import com.hadroncfy.sreplay.Main;
 import com.hadroncfy.sreplay.config.TextRenderer;
 import com.hadroncfy.sreplay.mixin.PlayerSpawnS2CPacketAccessor;
 import com.mojang.authlib.GameProfile;
