@@ -13,6 +13,8 @@ Tested in Minecraft 1.14.4, should also work in later versions with only trivial
 * `/sreplay player <player name> respawn [<recording file name>]` Stop the current recording session of the specified bot, save recording file, and start a new recording session on the same bot;
 * `/sreplay player <player name> set sizeLimit <size limit>` Set recording file size limit for the specified bot, in MB. Set to `-1` for unlimited size.
 * `/sreplay player <player name> set autoRestart <auto restart>` Set auto restart flag. When size limit exceeds a new recording session will be started if this flag is on.
+* `/sreplay player <player name> pause|resume` Pause/resume recording of the designated bot.
+* `/sreplay player <player name> marker <marker name>` Add a marker on the time line.
 * `/sreplay list` List all saved replay file;
 * `/sreplay delete <recording file name>` Delete a recording file. Needs confirming using `/sreplay confirm <code>`;
 * `/sreplay reload` Reload configuration.

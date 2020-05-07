@@ -15,6 +15,7 @@ import com.hadroncfy.sreplay.Main;
 import com.hadroncfy.sreplay.config.TextRenderer;
 import com.hadroncfy.sreplay.mixin.PlayerSpawnS2CPacketAccessor;
 import com.mojang.authlib.GameProfile;
+import com.replaymod.replaystudio.data.Marker;
 import com.replaymod.replaystudio.replay.ReplayFile;
 import com.replaymod.replaystudio.replay.ReplayMetaData;
 import com.replaymod.replaystudio.replay.ZipReplayFile;
@@ -36,11 +37,10 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
 public class Recorder implements IPacketListener {
-
+    private static final String MARKER_PAUSE = "PAUSE";
     private static final Logger LOGGER = LogManager.getLogger();
     private final MinecraftServer server;
     private final GameProfile profile;
-
     
     private final Set<UUID> uuids = new HashSet<>();
     
@@ -59,7 +59,9 @@ public class Recorder implements IPacketListener {
     private boolean isSaving = false;
     private long bytesRecorded = 0; 
     private boolean paused = false;
+    private boolean gPaused = false;
     private boolean followTick = false;
+    private final Set<Marker> markers = new HashSet<>();
 
     private long sizeLimit;
 
@@ -145,12 +147,29 @@ public class Recorder implements IPacketListener {
     }
 
     private synchronized long getCurrentTimeAndUpdate(){
-        final long now = getRecordedTime();
+        long now = getRecordedTime();
         if (paused){
-            paused = false;
+            if (!gPaused){
+                paused = false;
+            }
             timeShift += now - lastPacket;
+            return lastPacket;
         }
         return lastPacket = now;
+    }
+
+    public void pauseRecording(){
+        gPaused = true;
+        paused = true;
+        addMarker(MARKER_PAUSE);
+    }
+
+    public boolean isRecordingPaused(){
+        return gPaused;
+    }
+
+    public void resumeRecording(){
+        gPaused = false;
     }
 
     public synchronized void setFollowTick(boolean f){
@@ -202,6 +221,13 @@ public class Recorder implements IPacketListener {
         return bytesRecorded;
     }
 
+    public void addMarker(String name){
+        Marker m = new Marker();
+        m.setName(name);
+        m.setTime((int) getRecordedTime());
+        markers.add(m);
+    }
+
     public void saveRecording() {
         if (!isSaving){
             isSaving = true;
@@ -221,6 +247,11 @@ public class Recorder implements IPacketListener {
                         uuids.stream().map(uuid -> uuid.toString()).collect(Collectors.toList()).toArray(players);
                         metaData.setPlayers(players);
                         replayFile.writeMetaData(metaData);
+
+                        if (markers.size() > 0){
+                            replayFile.writeMarkers(markers);
+                        }
+
                         replayFile.save();
                         replayFile.close();
                         server.getPlayerManager()

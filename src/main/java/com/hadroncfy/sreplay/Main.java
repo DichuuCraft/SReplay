@@ -102,9 +102,9 @@ public class Main implements ModInitializer {
         }
         else {
             config = new Config();
-            try (Writer writer = new OutputStreamWriter(new FileOutputStream(file))){
-                writer.write(Config.GSON.toJson(config));
-            }
+        }
+        try (Writer writer = new OutputStreamWriter(new FileOutputStream(file))){
+            writer.write(Config.GSON.toJson(config));
         }
     }
 

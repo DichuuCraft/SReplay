@@ -43,5 +43,13 @@ public class Formats {
     aboutToDeleteRecording = new LiteralText("将要删除录像文件$1"),
     recordingFile = new LiteralText("$1正在录制")
         .append(new LiteralText("$2").setStyle(new Style().setColor(Formatting.GOLD))),
-    sizeLimitTooSmall = red("大小限制不能小于10M");
+    sizeLimitTooSmall = red("大小限制不能小于10M"),
+    recordingPaused = new LiteralText("$1").setStyle(new Style().setColor(Formatting.GOLD))
+        .append(new LiteralText("已暂停录制")),
+    recordingResumed = new LiteralText("$1").setStyle(new Style().setColor(Formatting.GOLD))
+        .append(new LiteralText("已继续开始录制")),
+    markerAdded = new LiteralText("已在")
+        .append(new LiteralText("$1").setStyle(new Style().setColor(Formatting.GOLD)))
+        .append(new LiteralText("添加标记"))
+        .append(new LiteralText("$2").setStyle(new Style().setItalic(true).setColor(Formatting.GREEN)));
 }

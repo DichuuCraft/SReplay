@@ -45,7 +45,10 @@ public class SReplayCommand {
                     .then(argument("fileName", StringArgumentType.word()).executes(SReplayCommand::playerRespawn)))
                 .then(literal("tp").executes(SReplayCommand::playerTp))
                 .then(literal("getFileName").executes(SReplayCommand::getPlayerFile))
-                .then(buildPlayerParameterCommand())))
+                .then(buildPlayerParameterCommand())
+                .then(literal("pause").executes(SReplayCommand::pause))
+                .then(literal("resume").executes(SReplayCommand::resume))
+                .then(literal("marker").then(argument("marker", StringArgumentType.word()).executes(SReplayCommand::marker)))))
             .then(literal("list").executes(SReplayCommand::listRecordings))
             .then(literal("delete").then(argument("recording", StringArgumentType.word())
                 .suggests((src, sb) -> suggestMatching(Main.listRecordings().stream().map(f -> f.getName()), sb))
@@ -113,6 +116,43 @@ public class SReplayCommand {
                 e.printStackTrace();
             }
             return null;
+        }
+    }
+
+    public static int marker(CommandContext<ServerCommandSource> ctx){
+        Photographer p = requirePlayer(ctx);
+        if (p != null){
+            String name = StringArgumentType.getString(ctx, "marker");
+            p.getRecorder().addMarker(name);
+            ctx.getSource().getMinecraftServer().getPlayerManager().broadcastChatMessage(TextRenderer.render(Main.getFormats().markerAdded, p.getGameProfile().getName(), name), false);
+            return 1;
+        }
+        else {
+            return 0;
+        }
+    }
+
+    public static int pause(CommandContext<ServerCommandSource> ctx){
+        Photographer p = requirePlayer(ctx);
+        if (p != null){
+            p.getRecorder().pauseRecording();
+            ctx.getSource().getMinecraftServer().getPlayerManager().broadcastChatMessage(TextRenderer.render(Main.getFormats().recordingPaused, p.getGameProfile().getName()), false);
+            return 1;
+        }
+        else {
+            return 0;
+        }
+    }
+
+    public static int resume(CommandContext<ServerCommandSource> ctx){
+        Photographer p = requirePlayer(ctx);
+        if (p != null){
+            p.getRecorder().resumeRecording();
+            ctx.getSource().getMinecraftServer().getPlayerManager().broadcastChatMessage(TextRenderer.render(Main.getFormats().recordingResumed, p.getGameProfile().getName()), false);
+            return 1;
+        }
+        else {
+            return 0;
         }
     }
 
