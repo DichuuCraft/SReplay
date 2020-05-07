@@ -42,6 +42,8 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     private HackyClientConnection connection;
     private Recorder recorder;
 
+    private File basePath;
+
     public Photographer(MinecraftServer server, ServerWorld world, GameProfile profile, ServerPlayerInteractionManager im, long sizeLimit, boolean autoReconnect){
         super(server, world, profile, im);
         this.sizeLimit = sizeLimit;
@@ -58,7 +60,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         return ret;
     }
 
-    public void connect(File outputPath) throws IOException {
+    private void connectDirect(File outputPath) throws IOException{
         recorder = new Recorder(getGameProfile(), server, outputPath, sizeLimit);
         connection = new HackyClientConnection(NetworkSide.CLIENTBOUND, recorder);
         
@@ -82,6 +84,11 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         getServerWorld().getChunkManager().updateCameraPosition(this);
     }
 
+    public void connect(File outputPath) throws IOException {
+        basePath = outputPath;
+        connectDirect(outputPath);
+    }
+
     @Override
     public void tick() {
         if (getServer().getTicks() % 10 == 0){
@@ -98,12 +105,12 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
             return null;
         }
         long duration = recorder.getRecordedTime() / 1000;
-        long sec = duration % 60;
+        final long sec = duration % 60;
         duration /= 60;
-        long min = duration % 60;
+        final long min = duration % 60;
         duration /= 60;
-        long hour = duration;
-        String time;
+        final long hour = duration;
+        final String time;
         if (hour == 0){
             time = String.format("%d:%02d", min, sec);
         }
@@ -155,7 +162,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
             recorder.saveRecording();
             recorder = null;
         }
-        Runnable task =  () -> {
+        final Runnable task =  () -> {
             if (networkHandler != null){
                 networkHandler.onDisconnected(new LiteralText("Killed"));
             }
@@ -184,13 +191,12 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
 
     @Override
     public void onSizeLimitExceeded(long size) {
-        final File out = recorder.getOutputPath();
         kill(() -> {
             if (autoReconnect){
-                String s = out.getAbsolutePath();
+                String s = basePath.getAbsolutePath();
                 File out2 = new File(s.substring(0, s.length() - 5) + String.format("_%d.mcpr", ++reconnectCount));
                 try {
-                    connect(out2);
+                    connectDirect(out2);
                 } catch (IOException e) {
                     server.getPlayerManager().broadcastChatMessage(TextRenderer.render(Main.getFormats().failedToStartRecording, getGameProfile().getName()), true);
                     e.printStackTrace();

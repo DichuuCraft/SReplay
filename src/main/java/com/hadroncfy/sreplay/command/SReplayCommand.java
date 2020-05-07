@@ -70,8 +70,6 @@ public class SReplayCommand {
     private static LiteralArgumentBuilder<ServerCommandSource> buildPlayerParameterCommand(){
         return literal("set")
         .then(literal("sizeLimit")
-            // XXX: Velocity doesn't seem to recognize LongArgumentType
-            // https://github.com/VelocityPowered/Velocity/issues/295
             .then(argument("sizeLimit", IntegerArgumentType.integer(-1))
                 .executes(ctx -> {
                     final Photographer p = requirePlayer(ctx);
