@@ -16,7 +16,7 @@ public class Config {
         .registerTypeAdapterFactory(new LowercaseEnumTypeAdapterFactory())
         .registerTypeAdapter(Pattern.class, new PatternSerializer()).create();
 
-    public String savePath = ".";
+    public String savePath = "";
     public String serverName = "localhost";
     public long sizeLimit = -1;
     public boolean autoReconnect = true;

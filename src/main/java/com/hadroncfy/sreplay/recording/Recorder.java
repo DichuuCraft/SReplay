@@ -51,13 +51,15 @@ public class Recorder implements IPacketListener {
     
     private final ExecutorService saveService = Executors.newSingleThreadExecutor();;
     private long startTime;
+    private int startTick;
     private long lastPacket;
-    private long timePassedWhilePaused = 0;
+    private long timeShift = 0;
     private NetworkState nstate = NetworkState.LOGIN;
     private boolean stopped = false;
     private boolean isSaving = false;
     private long bytesRecorded = 0; 
     private boolean paused = false;
+    private boolean followTick = false;
 
     private long sizeLimit;
 
@@ -95,12 +97,9 @@ public class Recorder implements IPacketListener {
         return paused;
     }
 
-    public long getRecordedTime(){
-        return System.currentTimeMillis() - startTime - timePassedWhilePaused;
-    }
-
     public void start() {
         startTime = System.currentTimeMillis();
+        startTick = server.getTicks();
         
         metaData.setSingleplayer(false);
         metaData.setServerName(Main.getConfig().serverName);
@@ -133,6 +132,39 @@ public class Recorder implements IPacketListener {
         paused = true;
     }
 
+    // Should only increase
+    public long getRecordedTime(){
+        final long base;
+        if (followTick){
+            base = (server.getTicks() - startTick) * 50;
+        }
+        else {
+            base = System.currentTimeMillis() - startTime;
+        }
+        return base - timeShift;
+    }
+
+    private synchronized long getCurrentTimeAndUpdate(){
+        final long now = getRecordedTime();
+        if (paused){
+            paused = false;
+            timeShift += now - lastPacket;
+        }
+        return lastPacket = now;
+    }
+
+    public synchronized void setFollowTick(boolean f){
+        if (followTick != f){
+            final long t1 = getRecordedTime();
+            followTick = f;
+            final long t2 = getRecordedTime();
+            timeShift = t2 - t1;
+        }
+        else {
+            followTick = f;
+        }
+    }
+
     private void savePacket(Packet<?> packet) {
         if (sizeLimit != -1 && bytesRecorded > sizeLimit){
             stop();
@@ -143,15 +175,11 @@ public class Recorder implements IPacketListener {
         }
         try {
             byte[] pb = getPacketBytes(packet);
-            final long now = System.currentTimeMillis();
             saveService.submit(() -> {
                 try {
-                    if (paused){
-                        timePassedWhilePaused = now - startTime - lastPacket;
-                        paused = false;
-                    }
-                    lastPacket = now - startTime - timePassedWhilePaused;
-                    packetSaveStream.writeInt((int) lastPacket);
+                    // XXX: should be put outside?
+                    final long timeStamp = getCurrentTimeAndUpdate();
+                    packetSaveStream.writeInt((int) timeStamp);
                     packetSaveStream.writeInt(pb.length);
                     packetSaveStream.write(pb);
                     bytesRecorded += pb.length + 8;
