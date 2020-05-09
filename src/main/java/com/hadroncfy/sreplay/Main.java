@@ -27,6 +27,7 @@ import com.google.gson.JsonParseException;
 import com.hadroncfy.sreplay.config.Config;
 import com.hadroncfy.sreplay.config.Formats;
 import com.hadroncfy.sreplay.recording.Photographer;
+import com.hadroncfy.sreplay.recording.RecordingParam;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -36,10 +37,18 @@ public class Main implements ModInitializer {
 
     private static final Logger LOGGER = LogManager.getLogger();
     private static Config config;
+
+    private static RecordingParam createDefaultRecordingParam(){
+        RecordingParam p = new RecordingParam();
+        p.autoReconnect = config.autoReconnect;
+        p.sizeLimit = config.sizeLimit;
+        p.timeLimit = config.timeLimit;
+        return p;
+    }
     
     public static Photographer createFake(MinecraftServer server, String name, DimensionType dim, Vec3d pos, File recordingFile)
             throws IOException {
-        Photographer p = Photographer.create(name, server, dim, pos, config.sizeLimit, config.autoReconnect);
+        Photographer p = Photographer.create(name, server, dim, pos, createDefaultRecordingParam());
         p.connect(recordingFile);
         // p.tp(dim, pos.x, pos.y, pos.z);
         return p;

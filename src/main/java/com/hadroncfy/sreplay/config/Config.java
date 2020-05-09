@@ -19,6 +19,7 @@ public class Config {
     public String savePath = "";
     public String serverName = "localhost";
     public long sizeLimit = -1;
+    public long timeLimit = -1;
     public boolean autoReconnect = true;
     public Pattern playerNamePattern = Pattern.compile("^cam_.*$");
 

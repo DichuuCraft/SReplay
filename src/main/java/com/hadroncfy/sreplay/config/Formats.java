@@ -44,6 +44,7 @@ public class Formats {
     recordingFile = new LiteralText("$1正在录制")
         .append(new LiteralText("$2").setStyle(new Style().setColor(Formatting.GOLD))),
     sizeLimitTooSmall = red("大小限制不能小于10M"),
+    timeLimitTooSmall = red("时间限制不能小于10s"),
     recordingPaused = new LiteralText("$1").setStyle(new Style().setColor(Formatting.GOLD))
         .append(new LiteralText("已暂停录制")),
     recordingResumed = new LiteralText("$1").setStyle(new Style().setColor(Formatting.GOLD))

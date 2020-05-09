@@ -48,6 +48,7 @@ public class Recorder implements IPacketListener {
     private final ReplayFile replayFile;
     private final DataOutputStream packetSaveStream;
     private final ReplayMetaData metaData;
+    private final RecordingParam param;
     
     private final ExecutorService saveService = Executors.newSingleThreadExecutor();;
     private long startTime;
@@ -63,15 +64,13 @@ public class Recorder implements IPacketListener {
     private boolean followTick = false;
     private final Set<Marker> markers = new HashSet<>();
 
-    private long sizeLimit;
-
     private ISizeLimitExceededListener limiter = null;
 
-    public Recorder(GameProfile profile, MinecraftServer server, File outputPath, long sizeLimit) throws IOException {
+    public Recorder(GameProfile profile, MinecraftServer server, File outputPath, RecordingParam param) throws IOException {
         this.server = server;
         this.profile = profile;
 
-        this.sizeLimit = sizeLimit;
+        this.param = param;
         this.outputPath = outputPath;
 
         replayFile = new ZipReplayFile(new ReplayStudio(), outputPath);
@@ -85,10 +84,6 @@ public class Recorder implements IPacketListener {
 
     public File getOutputPath(){
         return outputPath;
-    }
-
-    public void setSizeLimit(long l){
-        sizeLimit = l;
     }
 
     public long getStartTime(){
@@ -168,6 +163,10 @@ public class Recorder implements IPacketListener {
         return gPaused;
     }
 
+    public boolean isSoftPaused(){
+        return !gPaused && paused;
+    }
+
     public void resumeRecording(){
         gPaused = false;
     }
@@ -185,7 +184,7 @@ public class Recorder implements IPacketListener {
     }
 
     private void savePacket(Packet<?> packet) {
-        if (sizeLimit != -1 && bytesRecorded > sizeLimit){
+        if (param.sizeLimit != -1 && bytesRecorded > param.sizeLimit || param.timeLimit != -1 && getRecordedTime() > param.timeLimit){
             stop();
             if (limiter != null){
                 limiter.onSizeLimitExceeded(bytesRecorded);

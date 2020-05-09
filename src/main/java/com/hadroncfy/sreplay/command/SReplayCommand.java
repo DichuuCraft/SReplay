@@ -78,13 +78,13 @@ public class SReplayCommand {
                     if (p != null){
                         int i = IntegerArgumentType.getInteger(ctx, "sizeLimit");
                         if (i == -1){
-                            p.setSizeLimit(-1);
+                            p.getRecordingParam().sizeLimit = -1;
                         }
-                        else if (i <= 10){
+                        else if (i < 10){
                             ctx.getSource().sendFeedback(Main.getFormats().sizeLimitTooSmall, true);
                         }
                         else {
-                            p.setSizeLimit(((long)i) << 20);
+                            p.getRecordingParam().sizeLimit = ((long)i) << 20;
                         }
                         return 1;
                     }
@@ -95,8 +95,26 @@ public class SReplayCommand {
                 .executes(ctx -> {
                     final Photographer p = requirePlayer(ctx);
                     if (p != null){
-                        p.setAutoReconnect(BoolArgumentType.getBool(ctx, "autoRestart"));
+                        p.getRecordingParam().autoReconnect = BoolArgumentType.getBool(ctx, "autoRestart");
                         return 1;
+                    }
+                    return 0;
+                })))
+        .then(literal("timeLimit")
+            .then(argument("timeLimit", IntegerArgumentType.integer(-1))
+                .executes(ctx -> {
+                    final Photographer p = requirePlayer(ctx);
+                    if (p != null){
+                        int i = IntegerArgumentType.getInteger(ctx, "timeLimit");
+                        if (i == -1){
+                            p.getRecordingParam().timeLimit = -1;
+                        }
+                        else if (i < 10){
+                            ctx.getSource().sendFeedback(Main.getFormats().timeLimitTooSmall, true);
+                        }
+                        else {
+                            p.getRecordingParam().timeLimit = i * 1000;
+                        }
                     }
                     return 0;
                 })));

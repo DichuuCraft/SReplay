@@ -35,8 +35,7 @@ import org.apache.logging.log4j.Logger;
 public class Photographer extends ServerPlayerEntity implements ISizeLimitExceededListener {
     private static final GameMode MODE = GameMode.SPECTATOR;
     private static final Logger LOGGER = LogManager.getLogger();
-    private long sizeLimit;
-    private boolean autoReconnect;
+    private final RecordingParam rparam;
     private int reconnectCount = 0;
     private Timer tablistUpdater;
     private HackyClientConnection connection;
@@ -44,24 +43,31 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
 
     private File basePath;
 
-    public Photographer(MinecraftServer server, ServerWorld world, GameProfile profile, ServerPlayerInteractionManager im, long sizeLimit, boolean autoReconnect){
+    public Photographer(MinecraftServer server, ServerWorld world, GameProfile profile, ServerPlayerInteractionManager im, RecordingParam param){
         super(server, world, profile, im);
-        this.sizeLimit = sizeLimit;
-        this.autoReconnect = autoReconnect;
+        rparam = param;
     }
 
-    public static Photographer create(String name, MinecraftServer server, DimensionType dim, Vec3d pos, long sizeLimit, boolean autoReconnect){
+    public Photographer(MinecraftServer server, ServerWorld world, GameProfile profile, ServerPlayerInteractionManager im){
+        this(server, world, profile, im, new RecordingParam());
+    } 
+
+    public static Photographer create(String name, MinecraftServer server, DimensionType dim, Vec3d pos, RecordingParam param){
         GameProfile profile = new GameProfile(PlayerEntity.getOfflinePlayerUuid(name), name);
         ServerWorld world = server.getWorld(dim);
         ServerPlayerInteractionManager im = new ServerPlayerInteractionManager(world);
-        Photographer ret = new Photographer(server, world, profile, im, sizeLimit, autoReconnect);
+        Photographer ret = new Photographer(server, world, profile, im, param);
         ret.updatePosition(pos.x, pos.y, pos.z);
         ((PlayerManagerAccessor)server.getPlayerManager()).getSaveHandler().savePlayerData(ret);
         return ret;
     }
 
+    public static Photographer create(String name, MinecraftServer server, DimensionType dim, Vec3d pos){
+        return create(name, server, dim, pos, new RecordingParam());
+    }
+
     private void connectDirect(File outputPath) throws IOException{
-        recorder = new Recorder(getGameProfile(), server, outputPath, sizeLimit);
+        recorder = new Recorder(getGameProfile(), server, outputPath, rparam);
         connection = new HackyClientConnection(NetworkSide.CLIENTBOUND, recorder);
         
         recorder.setOnSizeLimitExceededListener(this);
@@ -71,7 +77,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         tablistUpdater.scheduleAtFixedRate(new TimerTask(){
             @Override
             public void run() {
-                if (!recorder.isPaused()){
+                if (!recorder.isSoftPaused()){
                     server.getPlayerManager().sendToAll(new PlayerListS2CPacket(Action.UPDATE_DISPLAY_NAME, Photographer.this));
                 }
             }
@@ -99,30 +105,38 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         method_14226();// playerTick
     }
 
+    private static String timeToString(long ms){
+        final long sec = ms % 60;
+        ms /= 60;
+        final long min = ms % 60;
+        ms /= 60;
+        final long hour = ms;
+        if (hour == 0){
+            return String.format("%d:%02d", min, sec);
+        }
+        else {
+            return String.format("%d:%02d:%02d", hour, min, sec);
+        }
+    }
+
     @Override
     public Text method_14206() {
         if (recorder == null){
             return null;
         }
         long duration = recorder.getRecordedTime() / 1000;
-        final long sec = duration % 60;
-        duration /= 60;
-        final long min = duration % 60;
-        duration /= 60;
-        final long hour = duration;
-        final String time;
-        if (hour == 0){
-            time = String.format("%d:%02d", min, sec);
+
+        String time = timeToString(duration);
+        if (rparam.timeLimit != -1){
+            time += "/" + timeToString(rparam.timeLimit / 1000);
         }
-        else {
-            time = String.format("%d:%02d:%02d", hour, min, sec);
-        }
+
         String size = String.format("%.2f", recorder.getRecordedBytes() / 1024F / 1024F) + "M";
-        if (sizeLimit != -1){
-            size += "/" + String.format("%.2f", sizeLimit / 1024F / 1024F) + "M";
+        if (rparam.sizeLimit != -1){
+            size += "/" + String.format("%.2f", rparam.sizeLimit / 1024F / 1024F) + "M";
         }
         Text ret = new LiteralText(getGameProfile().getName()).setStyle(new Style().setItalic(true).setColor(Formatting.AQUA));
-        if (autoReconnect){
+        if (rparam.autoReconnect){
             ret.append(new LiteralText(" [Auto]").setStyle(new Style().setItalic(false).setColor(Formatting.DARK_PURPLE)));
         }
         ret.append(new LiteralText(" " + time).setStyle(new Style().setItalic(false).setColor(Formatting.GREEN)))
@@ -192,7 +206,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     @Override
     public void onSizeLimitExceeded(long size) {
         kill(() -> {
-            if (autoReconnect){
+            if (rparam.autoReconnect){
                 String s = basePath.getAbsolutePath();
                 File out2 = new File(s.substring(0, s.length() - 5) + String.format("_%d.mcpr", ++reconnectCount));
                 try {
@@ -205,13 +219,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         }, true);
     }
 
-    public void setSizeLimit(long l){
-        sizeLimit = l;
-        if (recorder != null){
-            recorder.setSizeLimit(l);
-        }
-    }
-    public void setAutoReconnect(boolean b){
-        autoReconnect = b;
+    public RecordingParam getRecordingParam(){
+        return rparam;
     }
 }
