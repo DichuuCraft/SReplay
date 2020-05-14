@@ -14,12 +14,21 @@ public class HackyClientConnection extends ClientConnection {
         this.p = p;
     }
 
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    private static void notifyListener(Future future, GenericFutureListener l) {
+        try {
+            l.operationComplete(future);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     @Override
     public void send(Packet<?> packet, GenericFutureListener<? extends Future<? super Void>> callback) {
         p.onPacket(packet);
-        if (callback != null){
+        if (callback != null) {
             try {
-                callback.operationComplete(null);
+                notifyListener(new SimpleCompletedFuture(), callback);
             } catch (Exception e) {
                 e.printStackTrace();
             }

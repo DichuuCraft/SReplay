@@ -2,10 +2,12 @@ package com.hadroncfy.sreplay.recording;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import com.hadroncfy.sreplay.Main;
+import com.hadroncfy.sreplay.SReplayMod;
 import com.hadroncfy.sreplay.config.TextRenderer;
 import com.hadroncfy.sreplay.mixin.PlayerManagerAccessor;
 import com.mojang.authlib.GameProfile;
@@ -33,6 +35,8 @@ import org.apache.logging.log4j.Logger;
 
 
 public class Photographer extends ServerPlayerEntity implements ISizeLimitExceededListener {
+    public static final String MCPR = ".mcpr";
+    private static final String RAW_SUBDIR = "raw";
     private static final GameMode MODE = GameMode.SPECTATOR;
     private static final Logger LOGGER = LogManager.getLogger();
     private final RecordingParam rparam;
@@ -40,34 +44,71 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     private Timer tablistUpdater;
     private HackyClientConnection connection;
     private Recorder recorder;
+    private final File outputDir;
 
-    private File basePath;
+    private String recordingFileName, saveFileName;
 
-    public Photographer(MinecraftServer server, ServerWorld world, GameProfile profile, ServerPlayerInteractionManager im, RecordingParam param){
+    public Photographer(MinecraftServer server, ServerWorld world, GameProfile profile, ServerPlayerInteractionManager im, File outputDir, RecordingParam param){
         super(server, world, profile, im);
         rparam = param;
+        this.outputDir = outputDir;
     }
 
-    public Photographer(MinecraftServer server, ServerWorld world, GameProfile profile, ServerPlayerInteractionManager im){
-        this(server, world, profile, im, new RecordingParam());
+    public Photographer(MinecraftServer server, ServerWorld world, GameProfile profile, ServerPlayerInteractionManager im, File outputDir){
+        this(server, world, profile, im, outputDir, new RecordingParam());
     } 
 
-    public static Photographer create(String name, MinecraftServer server, DimensionType dim, Vec3d pos, RecordingParam param){
+    public static Photographer create(String name, MinecraftServer server, DimensionType dim, Vec3d pos, File outputDir, RecordingParam param){
         GameProfile profile = new GameProfile(PlayerEntity.getOfflinePlayerUuid(name), name);
         ServerWorld world = server.getWorld(dim);
         ServerPlayerInteractionManager im = new ServerPlayerInteractionManager(world);
-        Photographer ret = new Photographer(server, world, profile, im, param);
+        Photographer ret = new Photographer(server, world, profile, im, outputDir, param);
         ret.updatePosition(pos.x, pos.y, pos.z);
         ((PlayerManagerAccessor)server.getPlayerManager()).getSaveHandler().savePlayerData(ret);
         return ret;
     }
 
-    public static Photographer create(String name, MinecraftServer server, DimensionType dim, Vec3d pos){
-        return create(name, server, dim, pos, new RecordingParam());
+    public static Photographer create(String name, MinecraftServer server, DimensionType dim, Vec3d pos, File outputDir){
+        return create(name, server, dim, pos, outputDir, new RecordingParam());
     }
 
-    private void connectDirect(File outputPath) throws IOException{
-        recorder = new Recorder(getGameProfile(), server, outputPath, rparam);
+    private boolean checkForRecordingFileDupe(String name){
+        for (Photographer p: listFakes(getServer())){
+            if (p.saveFileName.equals(name) && p.outputDir.equals(outputDir)){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String genRecordingFileName(String name){
+        if (!checkForRecordingFileDupe(name)){
+            return name;
+        }
+        else {
+            int i = 0;
+            while (checkForRecordingFileDupe(name + "_" + i++));
+            return name + "_" + i;
+        }
+    }
+
+    public String getSaveName(){
+        return reconnectCount == 0 ? saveFileName : saveFileName + "_" + reconnectCount;
+    }
+    
+    public void setSaveName(String name){
+        reconnectCount = 0;
+        saveFileName = name;
+    }
+
+    private void connect() throws IOException{
+        recordingFileName = genRecordingFileName(getSaveName());
+        
+        final File raw = new File(outputDir, RAW_SUBDIR);
+        if (!raw.exists()){
+            raw.mkdirs();
+        }
+        recorder = new Recorder(getGameProfile(), server, new File(raw, recordingFileName), rparam);
         connection = new HackyClientConnection(NetworkSide.CLIENTBOUND, recorder);
         
         recorder.setOnSizeLimitExceededListener(this);
@@ -90,9 +131,10 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         getServerWorld().getChunkManager().updateCameraPosition(this);
     }
 
-    public void connect(File outputPath) throws IOException {
-        basePath = outputPath;
-        connectDirect(outputPath);
+    public void connect(String saveName) throws IOException {
+        reconnectCount = 0;
+        saveFileName = saveName;
+        connect();
     }
 
     @Override
@@ -172,8 +214,18 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
             tablistUpdater = null;
         }
         if (recorder != null){
+            final File saveFile = new File(outputDir, getSaveName() + MCPR);
             recorder.stop();
-            recorder.saveRecording();
+            recorder.saveRecording(saveFile)
+            .thenRun(() -> {
+                server.getPlayerManager().broadcastChatMessage(
+                    TextRenderer.render(SReplayMod.getFormats().savedRecordingFile, getGameProfile().getName(), saveFile.getName()), false);
+            })
+            .exceptionally(exception -> {
+                server.getPlayerManager().broadcastChatMessage(
+                    TextRenderer.render(SReplayMod.getFormats().failedToSaveRecordingFile, getGameProfile().getName(), exception.toString()), false);
+                return null;
+            });
             recorder = null;
         }
         final Runnable task =  () -> {
@@ -203,23 +255,65 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         }        
     }
 
-    @Override
-    public void onSizeLimitExceeded(long size) {
+    public void reconnect(){
         kill(() -> {
-            if (rparam.autoReconnect){
-                String s = basePath.getAbsolutePath();
-                File out2 = new File(s.substring(0, s.length() - 5) + String.format("_%d.mcpr", ++reconnectCount));
-                try {
-                    connectDirect(out2);
-                } catch (IOException e) {
-                    server.getPlayerManager().broadcastChatMessage(TextRenderer.render(Main.getFormats().failedToStartRecording, getGameProfile().getName()), true);
-                    e.printStackTrace();
-                }
+            reconnectCount++;
+            try {
+                connect();
+            } catch (IOException e) {
+                server.getPlayerManager().broadcastChatMessage(TextRenderer.render(SReplayMod.getFormats().failedToStartRecording, getGameProfile().getName()), true);
+                e.printStackTrace();
             }
         }, true);
     }
 
+    @Override
+    public void onSizeLimitExceeded(long size) {
+        if (rparam.autoReconnect){
+            reconnect();
+        }
+        else {
+            kill();
+        }
+    }
+
     public RecordingParam getRecordingParam(){
         return rparam;
+    }
+
+    public static void killAllFakes(MinecraftServer server, boolean async) {
+        // LOGGER.info("Killing all fakes");
+        listFakes(server).forEach(p -> LOGGER.info("Fake: " + p.getGameProfile().getName()));
+        listFakes(server).forEach(p -> p.kill(null, async));
+    }
+
+    public static Collection<Photographer> listFakes(MinecraftServer server){
+        Collection<Photographer> ret = new ArrayList<>();
+        for (ServerPlayerEntity player: server.getPlayerManager().getPlayerList()){
+            if (player instanceof Photographer){
+                ret.add((Photographer) player);
+            }
+        }
+        return ret;
+    }
+
+    public static Photographer getFake(MinecraftServer server, String name){
+        ServerPlayerEntity player = server.getPlayerManager().getPlayer(name);
+        if (player instanceof Photographer){
+            return (Photographer) player;
+        }
+        return null;
+    }
+
+    public static boolean checkForSaveFileDupe(MinecraftServer server, File outputDir, String name){
+        if (new File(outputDir, name + MCPR).exists()){
+            return true;
+        }
+        for (Photographer p: listFakes(server)){
+            if (p.outputDir.equals(outputDir) && p.getSaveName().equals(name)){
+                return true;
+            }
+        }
+        return false;
     }
 }

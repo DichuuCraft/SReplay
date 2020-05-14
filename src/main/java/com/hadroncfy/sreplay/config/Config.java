@@ -1,5 +1,7 @@
 package com.hadroncfy.sreplay.config;
 
+import java.io.File;
+import java.net.InetAddress;
 import java.util.regex.Pattern;
 
 import com.google.gson.Gson;
@@ -14,10 +16,14 @@ public class Config {
         .registerTypeHierarchyAdapter(Text.class, new Text.Serializer())
         .registerTypeHierarchyAdapter(Style.class, new Style.Serializer())
         .registerTypeAdapterFactory(new LowercaseEnumTypeAdapterFactory())
-        .registerTypeAdapter(Pattern.class, new PatternSerializer()).create();
+        .registerTypeAdapter(Pattern.class, new PatternSerializer())
+        .registerTypeAdapter(File.class, new FileSerializer()).create();
 
-    public String savePath = "";
+    public File savePath = new File("replay_recordings");
     public String serverName = "localhost";
+    public InetAddress serverHost = InetAddress.getLoopbackAddress();
+    public String serverHostName = "localhost";
+    public int serverPort = 12346;
     public long sizeLimit = -1;
     public long timeLimit = -1;
     public boolean autoReconnect = true;

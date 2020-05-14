@@ -1,6 +1,6 @@
 package com.hadroncfy.sreplay.mixin;
 
-import com.hadroncfy.sreplay.command.SReplayCommand;
+import com.hadroncfy.sreplay.SReplayMod;
 import com.mojang.brigadier.CommandDispatcher;
 
 import org.spongepowered.asm.mixin.Final;
@@ -21,6 +21,6 @@ public abstract class MixinCommandManager {
 
     @Inject(method = "<init>", at = @At("RETURN"))
     private void onRegister(boolean boolean_1, CallbackInfo ci) {
-        SReplayCommand.register(dispatcher);
+        SReplayMod.SREPLAY_COMMAND.register(dispatcher);
     }
 }

@@ -6,12 +6,14 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import com.hadroncfy.sreplay.Main;
+import com.hadroncfy.sreplay.SReplayMod;
 import com.hadroncfy.sreplay.config.TextRenderer;
 import com.hadroncfy.sreplay.mixin.PlayerSpawnS2CPacketAccessor;
 import com.mojang.authlib.GameProfile;
@@ -37,6 +39,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
 public class Recorder implements IPacketListener {
+    private static final String RECORDING_SUBDIR = "raw";
     private static final String MARKER_PAUSE = "PAUSE";
     private static final Logger LOGGER = LogManager.getLogger();
     private final MinecraftServer server;
@@ -50,7 +53,7 @@ public class Recorder implements IPacketListener {
     private final ReplayMetaData metaData;
     private final RecordingParam param;
     
-    private final ExecutorService saveService = Executors.newSingleThreadExecutor();;
+    private final ExecutorService saveService = Executors.newSingleThreadExecutor();
     private long startTime;
     private int startTick;
     private long lastPacket;
@@ -82,10 +85,6 @@ public class Recorder implements IPacketListener {
         limiter = l;
     }
 
-    public File getOutputPath(){
-        return outputPath;
-    }
-
     public long getStartTime(){
         return startTime;
     }
@@ -99,12 +98,12 @@ public class Recorder implements IPacketListener {
         startTick = server.getTicks();
         
         metaData.setSingleplayer(false);
-        metaData.setServerName(Main.getConfig().serverName);
+        metaData.setServerName(SReplayMod.getConfig().serverName);
         metaData.setGenerator("sreplay");
         metaData.setDate(startTime);
         metaData.setMcVersion("1.14.4");
         server.getPlayerManager()
-            .broadcastChatMessage(TextRenderer.render(Main.getFormats().startedRecording, profile.getName()), true);
+            .broadcastChatMessage(TextRenderer.render(SReplayMod.getFormats().startedRecording, profile.getName()), true);
 
         // Must contain this packet, otherwise ReplayMod would complain
         savePacket(new LoginSuccessS2CPacket(profile));
@@ -227,13 +226,13 @@ public class Recorder implements IPacketListener {
         markers.add(m);
     }
 
-    public void saveRecording() {
+    public CompletableFuture<Void> saveRecording(File dest) {
         if (!isSaving){
             isSaving = true;
             metaData.setDuration((int) lastPacket);
             server.getPlayerManager()
-                    .broadcastChatMessage(TextRenderer.render(Main.getFormats().savingRecordingFile, profile.getName()), true);
-            new Thread(() -> {
+                    .broadcastChatMessage(TextRenderer.render(SReplayMod.getFormats().savingRecordingFile, profile.getName()), true);
+            return CompletableFuture.runAsync(() -> {
                 saveService.shutdown();
                 try {
                     saveService.awaitTermination(10, TimeUnit.SECONDS);
@@ -246,24 +245,26 @@ public class Recorder implements IPacketListener {
                         uuids.stream().map(uuid -> uuid.toString()).collect(Collectors.toList()).toArray(players);
                         metaData.setPlayers(players);
                         replayFile.writeMetaData(metaData);
-
+    
                         if (markers.size() > 0){
                             replayFile.writeMarkers(markers);
                         }
-
-                        replayFile.save();
+    
+                        replayFile.saveTo(dest);
                         replayFile.close();
-                        server.getPlayerManager()
-                                .broadcastChatMessage(TextRenderer.render(Main.getFormats().savedRecordingFile, profile.getName(), outputPath.getName()), true);
                     }
-                } catch (IOException e) {
-                    server.getPlayerManager().broadcastChatMessage(
-                            TextRenderer.render(Main.getFormats().failedToSaveRecordingFile, profile.getName(), e.toString()), true);
                 }
-            }).start(); 
+                catch(IOException e){
+                    e.printStackTrace();
+                    throw new CompletionException(e);
+                }
+            });
         }
         else {
             LOGGER.warn("saveRecording() called twice");
+            return CompletableFuture.supplyAsync(() -> {
+                throw new IllegalStateException("saveRecording() called twice");
+            });
         }
     }
 

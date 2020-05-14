@@ -18,7 +18,7 @@
   "environment": "*",
   "entrypoints": {
     "main": [
-      "com.hadroncfy.sreplay.Main"
+      "com.hadroncfy.sreplay.SReplayMod"
     ]
   },
   "mixins": [

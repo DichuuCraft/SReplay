@@ -52,5 +52,11 @@ public class Formats {
     markerAdded = new LiteralText("已在")
         .append(new LiteralText("$1").setStyle(new Style().setColor(Formatting.GOLD)))
         .append(new LiteralText("添加标记"))
-        .append(new LiteralText("$2").setStyle(new Style().setItalic(true).setColor(Formatting.GREEN)));
+        .append(new LiteralText("$2").setStyle(new Style().setItalic(true).setColor(Formatting.GREEN))),
+    serverStarted = new LiteralText("[SReplay] 下载服务器已启动"),
+    serverStartFailed = red("[SReplay] 下载服务器启动失败：$1"),
+    serverStopped = new LiteralText("[SReplay] 下载服务器已停止"),
+    serverStopFailed = new LiteralText("[SReplay] 下载服务器停止失败：$1"),
+    downloadUrl = new LiteralText("[SReplay] 下载链接：")
+        .append(new LiteralText("$1").setStyle(new Style().setBold(true)));
 }

@@ -3,7 +3,7 @@ package com.hadroncfy.sreplay.mixin;
 import java.io.File;
 import java.net.Proxy;
 
-import com.hadroncfy.sreplay.Main;
+import com.hadroncfy.sreplay.recording.Photographer;
 import com.mojang.authlib.GameProfileRepository;
 import com.mojang.authlib.minecraft.MinecraftSessionService;
 import com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService;
@@ -33,11 +33,11 @@ public abstract class MixinIntegratedServer extends MinecraftServer {
 
     @Inject(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/profiler/DisableableProfiler;pop()V"))
     public void onPause(CallbackInfo ci) {
-        Main.listFakes(getPlayerManager()).forEach(p -> p.onPause());
+        Photographer.listFakes(this).forEach(p -> p.onPause());
     }
 
     @Inject(method = "stop", at = @At("HEAD"))
     public void onStop(boolean b, CallbackInfo ci){
-        Main.killAllFakes(getPlayerManager(), false);
+        Photographer.killAllFakes(this, false);
     }
 }
