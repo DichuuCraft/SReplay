@@ -36,10 +36,14 @@ public class Formats {
     recordingFileItem = new LiteralText("- $1($2M) ").setStyle(new Style().setColor(Formatting.GREEN))
         .append(new LiteralText("[下载]").setStyle(new Style().setColor(Formatting.BLUE).setClickEvent(
             new ClickEvent(Action.RUN_COMMAND, "/sreplay get $1")
-        )))
+        ).setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+            new LiteralText("点击以生成下载链接").setStyle(new Style().setItalic(true).setColor(Formatting.GRAY))
+        ))))
         .append(new LiteralText("[删除]").setStyle(new Style().setColor(Formatting.RED).setClickEvent(
             new ClickEvent(Action.RUN_COMMAND, "/sreplay delete $1")
-        ))),
+        ).setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+            new LiteralText("点击以删除").setStyle(new Style().setItalic(true).setColor(Formatting.GRAY))
+        )))),
     savingRecordingFile = new LiteralText("[SReplay] 正在保存")
         .append(new LiteralText("$1").setStyle(new Style().setColor(Formatting.GREEN)))
         .append(new LiteralText("的录像文件")),

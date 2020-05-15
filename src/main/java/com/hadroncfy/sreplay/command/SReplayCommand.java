@@ -1,5 +1,6 @@
 package com.hadroncfy.sreplay.command;
 
+import com.google.gson.JsonParseException;
 import com.hadroncfy.sreplay.SReplayMod;
 import com.hadroncfy.sreplay.config.TextRenderer;
 import com.hadroncfy.sreplay.recording.Photographer;
@@ -42,7 +43,7 @@ public class SReplayCommand {
     private static final Logger LOGGER = LogManager.getLogger();
     private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy_MM_dd_HH_mm_ss");
 
-    private final ConfirmationManager cm = new ConfirmationManager(20000);
+    private final ConfirmationManager cm = new ConfirmationManager(20000, 999);
     private final Random rand = new Random();
 
     public SReplayCommand(){
@@ -69,7 +70,7 @@ public class SReplayCommand {
                 .suggests(this::suggestRecordingFile)
                 .executes(this::deleteRecording)))
             .then(literal("confirm")
-                .then(argument("code", StringArgumentType.word()).executes(this::confirm)))
+                .then(argument("code", IntegerArgumentType.integer(0)).executes(this::confirm)))
             .then(literal("cancel").executes(this::cancel))
             .then(literal("reload").executes(this::reload))
             .then(literal("server")
@@ -308,7 +309,7 @@ public class SReplayCommand {
             SReplayMod.loadConfig();
             ctx.getSource().sendFeedback(render(SReplayMod.getFormats().reloadedConfig), false);
             return 1;
-        } catch (IOException e) {
+        } catch (IOException | JsonParseException e) {
             e.printStackTrace();
             ctx.getSource().sendFeedback(render(SReplayMod.getFormats().failedToReloadConfig, e.toString()), false);
             return 0;
@@ -316,7 +317,7 @@ public class SReplayCommand {
     }
 
     public int confirm(CommandContext<ServerCommandSource> ctx) {
-        final String code = StringArgumentType.getString(ctx, "code");
+        final int code = IntegerArgumentType.getInteger(ctx, "code");
         if (!cm.confirm(ctx.getSource().getName(), code)) {
             ctx.getSource().sendFeedback(SReplayMod.getFormats().nothingToConfirm, false);
         }
@@ -347,21 +348,11 @@ public class SReplayCommand {
         final File rec = new File(SReplayMod.getConfig().savePath, StringArgumentType.getString(ctx, "recording"));
         final MinecraftServer server = src.getMinecraftServer();
         if (rec.exists()) {
-            String code = Integer.toString(rand.nextInt(100));
             src.sendFeedback(render(SReplayMod.getFormats().aboutToDeleteRecording, rec.getName()), true);
-            src.sendFeedback(render(SReplayMod.getFormats().confirmingHint, code), false);
-            cm.submit(src.getName(), code, (match, cancelled) -> {
-                if (!cancelled) {
-                    if (match) {
-                        rec.delete();
-                        server.getPlayerManager()
-                            .sendToAll(render(SReplayMod.getFormats().deletedRecordingFile, src.getName(), rec.getName()));
-                    } else {
-                        src.sendFeedback(SReplayMod.getFormats().incorrectConfirmationCode, false);
-                    }
-                } else {
-                    src.sendFeedback(SReplayMod.getFormats().operationCancelled, false);
-                }
+            cm.submit(src.getName(), src, () -> {
+                rec.delete();
+                server.getPlayerManager()
+                    .sendToAll(render(SReplayMod.getFormats().deletedRecordingFile, src.getName(), rec.getName()));
             });
         } else {
             src.sendFeedback(render(SReplayMod.getFormats().fileNotFound, rec.getName()), true);

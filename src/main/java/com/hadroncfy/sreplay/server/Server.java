@@ -3,6 +3,7 @@ package com.hadroncfy.sreplay.server;
 import java.io.File;
 import java.net.InetAddress;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Random;
 
@@ -30,7 +31,6 @@ import net.minecraft.util.Lazy;
 
 public class Server {
     private static final Logger LOGGER = LogManager.getLogger();
-    private static final Random random = new Random();
     // Stolen from ServerNetworkIo
     public static final Lazy<NioEventLoopGroup> DEFAULT_CHANNEL = new Lazy<>(() -> {
         return new NioEventLoopGroup(0, (new ThreadFactoryBuilder()).setNameFormat("Netty Server IO #%d").setDaemon(true).build());
@@ -39,7 +39,8 @@ public class Server {
         return new EpollEventLoopGroup(0, (new ThreadFactoryBuilder()).setNameFormat("Netty Epoll Server IO #%d").setDaemon(true).build());
     });
 
-    final Map<String, FileEntry> urls = new HashMap<>();
+    private final Map<String, FileEntry> urls = new HashMap<>();
+    private final Map<File, FileEntry> filesByFile = new HashMap<>();
     private ChannelFuture channel;
 
     public synchronized ChannelFuture bind(InetAddress address, int port){
@@ -88,32 +89,34 @@ public class Server {
     }
 
     void removeExpiredFiles(){
-        for (String path: urls.keySet()){
+        for (String path: new HashSet<>(urls.keySet())){
             final FileEntry f = urls.get(path);
             if (f.isExpired()){
-                urls.remove(path);
+                removeFile(f);
             }
         }
     }
 
-    private static String randomString(int len){
-        final StringBuilder sb = new StringBuilder();
-        while (len --> 0){
-            int i = random.nextInt(16);
-            if (i >= 10){
-                sb.append((char)(i - 10 + 'a'));
-            }
-            else {
-                sb.append((char)('0' + i));
-            }
-        }
-        return sb.toString();
+    FileEntry getFile(String path){
+        return urls.get(path);
+    }
+
+    void removeFile(FileEntry f){
+        urls.remove(f.getPath());
+        filesByFile.remove(f.getFile());
     }
 
     public String addFile(File file, long last){
-        final String path = '/' + randomString(32) + '/' + file.getName();
         removeExpiredFiles();
-        urls.put(path, new FileEntry(file, last));
-        return path;
+        FileEntry fe = filesByFile.get(file);
+        if (fe == null){
+            fe = new FileEntry(file, last);
+            urls.put(fe.getPath(), fe);
+            filesByFile.put(file, fe);
+        }
+        else {
+            fe.touch(last);
+        }
+        return fe.getPath();
     }
 }

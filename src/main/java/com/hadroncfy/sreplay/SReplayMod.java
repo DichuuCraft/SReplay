@@ -14,6 +14,7 @@ import java.io.Reader;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import com.google.gson.JsonParseException;
@@ -47,10 +48,12 @@ public class SReplayMod implements ModInitializer {
     }
 
     public static List<File> listRecordings() {
-        return Arrays.asList(config.savePath.listFiles(f -> !f.isDirectory()));
+        List<File> files = Arrays.asList(config.savePath.listFiles(f -> !f.isDirectory()));
+        Collections.sort(files);
+        return files;
     }
 
-    public static void loadConfig() throws IOException {
+    public static void loadConfig() throws IOException, JsonParseException {
         File file = new File("config", "sreplay.json");
         if (file.exists()){
             try (Reader reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8)){

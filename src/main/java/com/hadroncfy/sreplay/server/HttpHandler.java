@@ -30,16 +30,16 @@ public class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest msg) throws Exception {
         final String path = msg.uri();
-        LOGGER.info("Got request");
+        LOGGER.info("Got request " + path + " from " + ctx.channel().remoteAddress().toString());
         server.removeExpiredFiles();
-        final FileEntry fileEntry = server.urls.get(path);
+        final FileEntry fileEntry = server.getFile(path);
         if (fileEntry == null || !fileEntry.getFile().exists()){
             // No no no, no 404
             ctx.close();
             return;
         }
         final File file = fileEntry.getFile();
-        server.urls.remove(path);
+        server.removeFile(fileEntry);
         final HttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.valueOf(200));
         response.headers().set("Content-Type", "application/zip");
         HttpUtil.setContentLength(response, file.length());

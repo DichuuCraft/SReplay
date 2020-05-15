@@ -2,48 +2,60 @@ package com.hadroncfy.sreplay.command;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import com.hadroncfy.sreplay.SReplayMod;
+import com.hadroncfy.sreplay.config.TextRenderer;
+
+import net.minecraft.server.command.ServerCommandSource;
+
 public class ConfirmationManager {
+    private static final Random random = new Random();
     private final Map<String, ConfirmationEntry> confirms = new HashMap<>();
     private final long timeout;
-    public ConfirmationManager(long timeout){
+    private final int codeBound;
+    public ConfirmationManager(long timeout, int codeBound){
         this.timeout = timeout;
+        this.codeBound = codeBound;
     }
 
-    public void submit(String label, String code, ConfirmationHandler h){
-        synchronized(this){
-            confirms.put(label, new ConfirmationEntry(label, code, h));
+    public synchronized void submit(String label, ServerCommandSource src, Runnable h){
+        ConfirmationEntry e = confirms.get(label);
+        if (e != null){
+            e.t.cancel();
         }
+        final int code = random.nextInt(codeBound);
+        src.sendFeedback(TextRenderer.render(SReplayMod.getFormats().confirmingHint, Integer.toString(code)), false);
+        confirms.put(label, new ConfirmationEntry(src, label, code, h));
     }
 
-    public boolean confirm(String label, String code){
-        synchronized(this){
-            ConfirmationEntry h = confirms.get(label);
-            if (h != null){
+    public synchronized boolean confirm(String label, int code){
+        ConfirmationEntry h = confirms.get(label);
+        if (h != null){
+            if (code == h.code){
                 h.t.cancel();
-                h.handler.onConfirm(code.equals(h.code), false);
-                if (code.equals(h.code)){
-                    confirms.remove(label);
-                }
-                return true;
-            }
-            return false;
-        }
-    }
-
-    public boolean cancel(String label){
-        synchronized(this){
-            ConfirmationEntry h = confirms.get(label);
-            if (h != null){
-                h.t.cancel();
-                h.handler.onConfirm(false, true);
+                h.handler.run();
                 confirms.remove(label);
-                return true;
             }
-            return false;
+            else {
+                h.src.sendError(SReplayMod.getFormats().incorrectConfirmationCode);
+            }
+            return true;
         }
+        return false;
+    }
+
+    public synchronized boolean cancel(String label){
+        ConfirmationEntry h = confirms.get(label);
+        if (h != null){
+            h.t.cancel();
+            confirms.remove(label);
+            h.src.sendFeedback(SReplayMod.getFormats().operationCancelled, true);
+            return true;
+        }
+        return false;
     }
 
     @FunctionalInterface
@@ -53,10 +65,12 @@ public class ConfirmationManager {
 
     private class ConfirmationEntry extends TimerTask {
         final String label;
-        final ConfirmationHandler handler;
+        final ServerCommandSource src;
+        final Runnable handler;
         final Timer t;
-        final String code;
-        public ConfirmationEntry(String label, String code, ConfirmationHandler h){
+        final int code;
+        public ConfirmationEntry(ServerCommandSource src, String label, int code, Runnable h){
+            this.src = src;
             this.label = label;
             this.handler = h;
             t = new Timer();
@@ -68,7 +82,7 @@ public class ConfirmationManager {
         public void run() {
             synchronized(ConfirmationManager.this){
                 confirms.remove(label);
-                handler.onConfirm(false, true);
+                src.sendFeedback(SReplayMod.getFormats().operationCancelled, true);
             }
         }
     }
