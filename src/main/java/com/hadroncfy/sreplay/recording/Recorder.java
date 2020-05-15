@@ -41,7 +41,6 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 
 public class Recorder implements IPacketListener {
-    private static final String RECORDING_SUBDIR = "raw";
     private static final String MARKER_PAUSE = "PAUSE";
     private static final Logger LOGGER = LogManager.getLogger();
     private final MinecraftServer server;
@@ -49,7 +48,6 @@ public class Recorder implements IPacketListener {
     
     private final Set<UUID> uuids = new HashSet<>();
     
-    private final File outputPath;
     private final ReplayFile replayFile;
     private final DataOutputStream packetSaveStream;
     private final ReplayMetaData metaData;
@@ -76,7 +74,6 @@ public class Recorder implements IPacketListener {
         this.profile = profile;
 
         this.param = param;
-        this.outputPath = outputPath;
 
         replayFile = new ZipReplayFile(new ReplayStudio(), outputPath);
         packetSaveStream = new DataOutputStream(replayFile.writePacketData(true));
@@ -126,7 +123,7 @@ public class Recorder implements IPacketListener {
         return ret;
     }
 
-    public void setPaused(){
+    public void setSoftPaused(){
         paused = true;
     }
 

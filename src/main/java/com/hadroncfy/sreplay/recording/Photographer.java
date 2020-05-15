@@ -12,6 +12,7 @@ import com.hadroncfy.sreplay.config.TextRenderer;
 import com.hadroncfy.sreplay.mixin.PlayerManagerAccessor;
 import com.mojang.authlib.GameProfile;
 
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.network.NetworkSide;
 import net.minecraft.network.packet.s2c.play.PlayerListS2CPacket;
@@ -26,6 +27,7 @@ import net.minecraft.text.LiteralText;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.Lazy;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
 import net.minecraft.world.dimension.DimensionType;
@@ -33,18 +35,27 @@ import net.minecraft.world.dimension.DimensionType;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import static com.hadroncfy.sreplay.config.TextRenderer.render;
 
 public class Photographer extends ServerPlayerEntity implements ISizeLimitExceededListener {
     public static final String MCPR = ".mcpr";
     private static final String RAW_SUBDIR = "raw";
     private static final GameMode MODE = GameMode.SPECTATOR;
     private static final Logger LOGGER = LogManager.getLogger();
+    private static final Lazy<Class<?>> carpetPlayerClass = new Lazy<>(() -> {
+        try {
+            return Class.forName("carpet.patches.EntityPlayerMPFake");
+        } catch (ClassNotFoundException e) {
+            return null;
+        }
+    });
     private final RecordingParam rparam;
     private int reconnectCount = 0;
     private Timer tablistUpdater;
     private HackyClientConnection connection;
     private Recorder recorder;
     private final File outputDir;
+    private int trackedPlayers = 0;
 
     private String recordingFileName, saveFileName;
 
@@ -126,6 +137,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
 
         setHealth(20.0F);
         removed = false;
+        trackedPlayers = 0;
         server.getPlayerManager().onPlayerConnect(connection, this);
         interactionManager.setGameMode(MODE);
         getServerWorld().getChunkManager().updateCameraPosition(this);
@@ -145,6 +157,54 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         }
         super.tick();
         method_14226();// playerTick
+    }
+
+    private boolean isRealPlayer(Entity entity){
+        if (entity instanceof ServerPlayerEntity){
+            Class<?> c = carpetPlayerClass.get();
+            return !((entity instanceof Photographer) || (c != null && c.isInstance(entity)));
+        }
+        return false;
+    }
+
+    @Override
+    public void onStartedTracking(Entity entity) {
+        super.onStartedTracking(entity);
+        if (isRealPlayer(entity)){
+            updatePause(1);
+        }
+    }
+
+    @Override
+    public void onStoppedTracking(Entity entity) {
+        super.onStoppedTracking(entity);
+        if (isRealPlayer(entity)){
+            updatePause(-1);
+        }
+    }
+
+    public void setAutoPause(boolean b){
+        rparam.autoPause = b;
+        if (recorder != null){
+            if (b && trackedPlayers <= 0){
+                recorder.pauseRecording();
+            }
+        }
+    }
+
+    private void updatePause(int delta){
+        if (recorder != null && rparam.autoPause){
+            final String name = getGameProfile().getName();
+            if (trackedPlayers > 0 && trackedPlayers + delta <= 0){
+                recorder.pauseRecording();
+                server.getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().autoPaused, name), true);
+            }
+            if (trackedPlayers <= 0 && trackedPlayers + delta > 0){
+                recorder.resumeRecording();
+                server.getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().autoResumed, name), true);
+            }
+        }
+        trackedPlayers += delta;
     }
 
     private static String timeToString(long ms){
@@ -179,7 +239,10 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         }
         Text ret = new LiteralText(getGameProfile().getName()).setStyle(new Style().setItalic(true).setColor(Formatting.AQUA));
         if (rparam.autoReconnect){
-            ret.append(new LiteralText(" [Auto]").setStyle(new Style().setItalic(false).setColor(Formatting.DARK_PURPLE)));
+            ret.append(new LiteralText(" [R]").setStyle(new Style().setItalic(false).setColor(Formatting.DARK_PURPLE)));
+        }
+        if (rparam.autoPause){
+            ret.append(new LiteralText("[P]").setStyle(new Style().setItalic(false).setColor(Formatting.GOLD)));
         }
         ret.append(new LiteralText(" " + time).setStyle(new Style().setItalic(false).setColor(Formatting.GREEN)))
             .append(new LiteralText(" " + size).setStyle(new Style().setItalic(false).setColor(Formatting.GREEN)));
@@ -222,6 +285,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
                     TextRenderer.render(SReplayMod.getFormats().savedRecordingFile, getGameProfile().getName(), saveFile.getName()), false);
             })
             .exceptionally(exception -> {
+                exception.printStackTrace();
                 server.getPlayerManager().broadcastChatMessage(
                     TextRenderer.render(SReplayMod.getFormats().failedToSaveRecordingFile, getGameProfile().getName(), exception.toString()), false);
                 return null;
@@ -249,9 +313,9 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         return false;
     }
 
-    public void onPause() {
+    public void onSoftPause() {
         if (recorder != null){
-            recorder.setPaused();
+            recorder.setSoftPaused();
         }        
     }
 

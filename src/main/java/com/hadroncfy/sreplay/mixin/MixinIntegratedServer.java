@@ -33,7 +33,7 @@ public abstract class MixinIntegratedServer extends MinecraftServer {
 
     @Inject(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/profiler/DisableableProfiler;pop()V"))
     public void onPause(CallbackInfo ci) {
-        Photographer.listFakes(this).forEach(p -> p.onPause());
+        Photographer.listFakes(this).forEach(p -> p.onSoftPause());
     }
 
     @Inject(method = "stop", at = @At("HEAD"))

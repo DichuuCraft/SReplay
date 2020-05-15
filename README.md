@@ -4,6 +4,10 @@
 
 Server-side recording mod for [ReplayMod](https://github.com/ReplayMod/ReplayMod). It records the game using fake players so can be used on servers for 24/7 recording. It's also an alternative way to record single player world.
 
+* Display recorded time, recorded file size, etc. in tab list.
+* Can be set to pause automatically when no players are near by.
+* Allow players to download recording files via an embedded http server.
+
 Tested in Minecraft 1.14.4, should also work in later versions with only trivial modifications on the code (minecraft version and yarn mapping version of fabric-loom).
 
 ## Use
@@ -14,11 +18,14 @@ Tested in Minecraft 1.14.4, should also work in later versions with only trivial
 * `/sreplay player <player name> set sizeLimit <size limit>` Set recording file size limit for the specified bot, in MB. Set to `-1` for unlimited size.
 * `/sreplay player <player name> set timeLimit <time limit>` Set recording time limit for the specified bot, in seconds. Set to `-1` for unlimited time length.
 * `/sreplay player <player name> set autoRestart <auto restart>` Set auto restart flag. When size limit or time limit exceeds a new recording session will be started if this flag is on.
+* `/sreplay player <player name> set autoPause <auto pause>` Set auto pause flag. If this flag is on, recording will be paused while no players near by.
 * `/sreplay player <player name> pause|resume` Pause/resume recording of the designated bot.
 * `/sreplay player <player name> marker <marker name>` Add a marker on the time line.
 * `/sreplay list` List all saved replay file;
 * `/sreplay delete <recording file name>` Delete a recording file. Needs confirming using `/sreplay confirm <code>`;
 * `/sreplay reload` Reload configuration.
+* `/sreplay get <recording file>` Generate a temporary downloading URL for the given recording file. This URL will be invalidated after first request, or a configurable time out is expired.
+* `/sreplay server start|stop` Start/stop the http server for downloading recording file.
 
 ## Configuration
 Cnofiguration file is `config/sreplay.json`, it will be created each time start the mod if not exist.

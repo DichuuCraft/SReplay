@@ -112,7 +112,7 @@ public class SReplayCommand {
                 return 1;
             }
             p.getRecorder().removeMarker(id);
-            src.sendFeedback(render(SReplayMod.getFormats().markerRemoved, name, Integer.toString(id + 1)), true);
+            src.getMinecraftServer().getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().markerRemoved, ctx.getSource().getName(), name, Integer.toString(id + 1)), false);
         }
         return 0;
     }
@@ -193,7 +193,7 @@ public class SReplayCommand {
                 return 0;
             }
             p.setSaveName(name);
-            ctx.getSource().sendFeedback(render(SReplayMod.getFormats().renamedFile, p.getGameProfile().getName(), name), true);
+            ctx.getSource().sendFeedback(render(SReplayMod.getFormats().renamedFile, ctx.getSource().getName(), p.getGameProfile().getName(), name), true);
             return 1;
         }
         return 0;
@@ -201,56 +201,55 @@ public class SReplayCommand {
 
     private static LiteralArgumentBuilder<ServerCommandSource> buildPlayerParameterCommand(){
         return literal("set")
-        .then(literal("sizeLimit")
-            .then(argument("sizeLimit", IntegerArgumentType.integer(-1))
-                .executes(ctx -> {
-                    final Photographer p = requirePlayer(ctx);
-                    if (p != null){
-                        int i = IntegerArgumentType.getInteger(ctx, "sizeLimit");
-                        if (i == -1){
-                            p.getRecordingParam().sizeLimit = -1;
-                        }
-                        else if (i < 10){
-                            ctx.getSource().sendFeedback(SReplayMod.getFormats().sizeLimitTooSmall, true);
-                        }
-                        else {
-                            p.getRecordingParam().sizeLimit = ((long)i) << 20;
-                        }
+            .then(new RecordParameterExecutor<Integer>("sizeLimit", IntegerArgumentType.integer(-1), int.class) {
+				@Override
+				protected int run(CommandContext<ServerCommandSource> ctx, Photographer p, Integer val) {
+                    if (val == -1){
+                        p.getRecordingParam().sizeLimit = -1;
+                    }
+                    else if (val < 10){
+                        ctx.getSource().sendFeedback(SReplayMod.getFormats().sizeLimitTooSmall, true);
                         return 1;
                     }
-                    return 0;
-                })))
-        .then(literal("autoRestart")
-            .then(argument("autoRestart", BoolArgumentType.bool())
-                .executes(ctx -> {
-                    final Photographer p = requirePlayer(ctx);
-                    if (p != null){
-                        p.getRecordingParam().autoReconnect = BoolArgumentType.getBool(ctx, "autoRestart");
-                        return 1;
+                    else {
+                        p.getRecordingParam().sizeLimit = ((long)val) << 20;
                     }
-                    return 0;
-                })))
-        .then(literal("timeLimit")
-            .then(argument("timeLimit", IntegerArgumentType.integer(-1))
-                .executes(ctx -> {
-                    final Photographer p = requirePlayer(ctx);
-                    if (p != null){
-                        int i = IntegerArgumentType.getInteger(ctx, "timeLimit");
-                        if (i == -1){
-                            p.getRecordingParam().timeLimit = -1;
-                        }
-                        else if (i < 10){
-                            ctx.getSource().sendFeedback(SReplayMod.getFormats().timeLimitTooSmall, true);
-                        }
-                        else {
-                            p.getRecordingParam().timeLimit = i * 1000;
-                        }
+					return 0;
+				}
+            }.build())
+            .then(new RecordParameterExecutor<Integer>("timeLimit", IntegerArgumentType.integer(-1), int.class) {
+				@Override
+				protected int run(CommandContext<ServerCommandSource> ctx, Photographer p, Integer val) {
+                    if (val == -1){
+                        p.getRecordingParam().timeLimit = -1;
                     }
-                    return 0;
-                })));
+                    else if (val < 10){
+                        ctx.getSource().sendFeedback(SReplayMod.getFormats().timeLimitTooSmall, true);
+                    }
+                    else {
+                        p.getRecordingParam().timeLimit = val * 1000;
+                    }
+					return 0;
+				}
+                
+            }.build())
+            .then(new RecordParameterExecutor<Boolean>("autoRestart", BoolArgumentType.bool(), boolean.class) {
+				@Override
+				protected int run(CommandContext<ServerCommandSource> ctx, Photographer p, Boolean val) {
+					p.getRecordingParam().autoReconnect = val;
+					return 0;
+				}
+            }.build())
+            .then(new RecordParameterExecutor<Boolean>("autoPause", BoolArgumentType.bool(), boolean.class) {
+				@Override
+				protected int run(CommandContext<ServerCommandSource> ctx, Photographer p, Boolean val) {
+					p.setAutoPause(val);
+					return 0;
+				}
+            }.build());
     }
 
-    private static Photographer requirePlayer(CommandContext<ServerCommandSource> ctx){
+    static Photographer requirePlayer(CommandContext<ServerCommandSource> ctx){
         String name = StringArgumentType.getString(ctx, "player");
         Photographer p = SReplayMod.getFake(ctx.getSource().getMinecraftServer(), name);
         if (p != null){
@@ -272,7 +271,7 @@ public class SReplayCommand {
         if (p != null){
             String name = StringArgumentType.getString(ctx, "marker");
             p.getRecorder().addMarker(name);
-            ctx.getSource().getMinecraftServer().getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().markerAdded, p.getGameProfile().getName(), name), false);
+            ctx.getSource().getMinecraftServer().getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().markerAdded, ctx.getSource().getName(), p.getGameProfile().getName(), name), false);
             return 1;
         }
         else {
@@ -284,7 +283,7 @@ public class SReplayCommand {
         Photographer p = requirePlayer(ctx);
         if (p != null){
             p.getRecorder().pauseRecording();
-            ctx.getSource().getMinecraftServer().getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().recordingPaused, p.getGameProfile().getName()), false);
+            ctx.getSource().getMinecraftServer().getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().recordingPaused, ctx.getSource().getName(), p.getGameProfile().getName()), false);
             return 1;
         }
         else {
@@ -296,7 +295,7 @@ public class SReplayCommand {
         Photographer p = requirePlayer(ctx);
         if (p != null){
             p.getRecorder().resumeRecording();
-            ctx.getSource().getMinecraftServer().getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().recordingResumed, p.getGameProfile().getName()), false);
+            ctx.getSource().getMinecraftServer().getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().recordingResumed, ctx.getSource().getName(), p.getGameProfile().getName()), false);
             return 1;
         }
         else {

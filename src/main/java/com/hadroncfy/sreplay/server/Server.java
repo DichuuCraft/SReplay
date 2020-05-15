@@ -1,7 +1,6 @@
 package com.hadroncfy.sreplay.server;
 
 import java.io.File;
-import java.io.RandomAccessFile;
 import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map;
@@ -74,7 +73,18 @@ public class Server {
     }
 
     public synchronized ChannelFuture stop(){
-        return channel.channel().closeFuture();
+        if (channel != null){
+            ChannelFuture ch = channel.channel().close();
+            ch.addListener(future -> {
+                if (future.isSuccess()){
+                    this.channel = null;
+                }
+            });
+            return ch;
+        }
+        else {
+            return null;
+        }
     }
 
     void removeExpiredFiles(){

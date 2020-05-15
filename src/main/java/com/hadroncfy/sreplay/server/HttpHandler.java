@@ -7,6 +7,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.DefaultFileRegion;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -45,11 +46,6 @@ public class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         ctx.write(response);
         ctx.write(new DefaultFileRegion(file, 0, file.length()));
         ChannelFuture ch = ctx.writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);
-        ch.addListener(future -> {
-            if (!future.isSuccess()){
-                LOGGER.error("Channel error: " + future.cause().getMessage());
-            }
-            ctx.close();
-        });
+        ch.addListener(ChannelFutureListener.CLOSE);
     }
 }

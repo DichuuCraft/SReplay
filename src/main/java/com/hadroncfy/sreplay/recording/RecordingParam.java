@@ -4,7 +4,7 @@ import com.hadroncfy.sreplay.config.Config;
 
 public class RecordingParam {
     public long sizeLimit = -1, timeLimit = -1;
-    public boolean autoReconnect = true;
+    public boolean autoReconnect = true, autoPause = false;
 
     public static RecordingParam createDefaultRecordingParam(Config config){
         RecordingParam p = new RecordingParam();

@@ -21,7 +21,7 @@ public class Formats {
     confirmingHint = new LiteralText("[SReplay] 使用")
         .append(new LiteralText("/sreplayer confirm $1").setStyle(new Style().setColor(Formatting.GOLD)))
         .append(new LiteralText("以确认此次操作")),
-    deletedRecordingFile = new LiteralText("$1已删除录像文件$2"),
+    deletedRecordingFile = new LiteralText("[SReplay] $1: 已删除录像文件$2"),
     operationCancelled = new LiteralText("[SReplay] 已取消操作"),
     incorrectConfirmationCode = red("[SReplay] 确认码不匹配"),
     fileNotFound = red("[SReplay] 文件$1不存在"),
@@ -33,11 +33,17 @@ public class Formats {
     playerIsLoggedIn = red("[SReplay] 玩家$1已登录"),
     failedToStartRecording = red("[SReplay] 录制失败：$1"),
     recordingFileListHead = new LiteralText("[SReplay] 录制文件列表："),
-    recordingFileItem = new LiteralText("- $1($2M)").setStyle(new Style().setColor(Formatting.GREEN)),
-    savingRecordingFile = new LiteralText("正在保存")
+    recordingFileItem = new LiteralText("- $1($2M) ").setStyle(new Style().setColor(Formatting.GREEN))
+        .append(new LiteralText("[下载]").setStyle(new Style().setColor(Formatting.BLUE).setClickEvent(
+            new ClickEvent(Action.RUN_COMMAND, "/sreplay get $1")
+        )))
+        .append(new LiteralText("[删除]").setStyle(new Style().setColor(Formatting.RED).setClickEvent(
+            new ClickEvent(Action.RUN_COMMAND, "/sreplay delete $1")
+        ))),
+    savingRecordingFile = new LiteralText("[SReplay] 正在保存")
         .append(new LiteralText("$1").setStyle(new Style().setColor(Formatting.GREEN)))
         .append(new LiteralText("的录像文件")),
-    savedRecordingFile = new LiteralText("已保存")
+    savedRecordingFile = new LiteralText("[SReplay] 已保存")
         .append(new LiteralText("$1").setStyle(new Style().setColor(Formatting.GREEN)))
         .append(new LiteralText("的录像文件"))
         .append(new LiteralText("$2").setStyle(new Style().setColor(Formatting.GREEN))),
@@ -48,20 +54,20 @@ public class Formats {
         .append(new LiteralText("$2").setStyle(new Style().setColor(Formatting.GOLD))),
     sizeLimitTooSmall = red("[SReplay] 大小限制不能小于10M"),
     timeLimitTooSmall = red("[SReplay] 时间限制不能小于10s"),
-    recordingPaused = new LiteralText("[SReplay] ")
-        .append(new LiteralText("$1").setStyle(new Style().setColor(Formatting.GOLD)))
+    recordingPaused = new LiteralText("[SReplay] $1: ")
+        .append(new LiteralText("$2").setStyle(new Style().setColor(Formatting.GOLD)))
         .append(new LiteralText("已暂停录制")),
-    recordingResumed = new LiteralText("[SReplay] ")
-        .append(new LiteralText("$1").setStyle(new Style().setColor(Formatting.GOLD)))
+    recordingResumed = new LiteralText("[SReplay] $1: ")
+        .append(new LiteralText("$2").setStyle(new Style().setColor(Formatting.GOLD)))
         .append(new LiteralText("已继续开始录制")),
-    markerAdded = new LiteralText("[SReplay] 已在")
-        .append(new LiteralText("$1").setStyle(new Style().setColor(Formatting.GOLD)))
+    markerAdded = new LiteralText("[SReplay] $1: 已在")
+        .append(new LiteralText("$2").setStyle(new Style().setColor(Formatting.GOLD)))
         .append(new LiteralText("添加标记"))
-        .append(new LiteralText("$2").setStyle(new Style().setItalic(true).setColor(Formatting.GREEN))),
-    markerRemoved = new LiteralText("[SReplay] 已在")
-        .append(new LiteralText("$1").setStyle(new Style().setColor(Formatting.GOLD)))
+        .append(new LiteralText("$3").setStyle(new Style().setItalic(true).setColor(Formatting.GREEN))),
+    markerRemoved = new LiteralText("[SReplay] $1: 已在")
+        .append(new LiteralText("$2").setStyle(new Style().setColor(Formatting.GOLD)))
         .append(new LiteralText("删除标记"))
-        .append(new LiteralText("$2").setStyle(new Style().setItalic(true).setColor(Formatting.GREEN))),
+        .append(new LiteralText("$3").setStyle(new Style().setItalic(true).setColor(Formatting.GREEN))),
     invalidMarkerId = red("[SReplay] 无效的标记序号"),
     markerListTitle = new LiteralText("[SReplay] ")
         .append(new LiteralText("$1").setStyle(new Style().setColor(Formatting.GOLD)))
@@ -70,10 +76,10 @@ public class Formats {
         .append(new LiteralText("[删除]").setStyle(new Style().setColor(Formatting.GREEN)
             .setClickEvent(new ClickEvent(Action.RUN_COMMAND, "/sreplay player $1 marker remove $2"))
         )),
-    renamedFile = new LiteralText("[SReplay] 已将")
-        .append(new LiteralText("$1").setStyle(new Style().setColor(Formatting.GREEN)))
+    renamedFile = new LiteralText("[SReplay] $1: 已将")
+        .append(new LiteralText("$2").setStyle(new Style().setColor(Formatting.GREEN)))
         .append(new LiteralText("的文件名设置为"))
-        .append(new LiteralText("$2").setStyle(new Style().setColor(Formatting.GREEN))),
+        .append(new LiteralText("$3").setStyle(new Style().setColor(Formatting.GREEN))),
     serverStarted = new LiteralText("[SReplay] 下载服务器已启动"),
     serverStartFailed = red("[SReplay] 下载服务器启动失败：$1"),
     serverStopped = new LiteralText("[SReplay] 下载服务器已停止"),
@@ -83,5 +89,13 @@ public class Formats {
             .setClickEvent(new ClickEvent(Action.OPEN_URL, "$1"))
             .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, 
                 new LiteralText("点击以下载").setStyle(new Style().setColor(Formatting.GRAY).setItalic(true))
-            ))));
+            )))),
+    autoPaused = new LiteralText("[SReplay] $1: 附近无玩家，暂停录制"),
+    autoResumed = new LiteralText("[SReplay] $1: 附近有玩家，继续录制"),
+    setParam = new LiteralText("[SReplay] $1: 将")
+        .append(new LiteralText("$2").setStyle(new Style().setColor(Formatting.GOLD)))
+        .append(new LiteralText("的"))
+        .append(new LiteralText("$3").setStyle(new Style().setColor(Formatting.GREEN)))
+        .append(new LiteralText("值设置为"))
+        .append(new LiteralText("$4").setStyle(new Style().setColor(Formatting.GREEN)));
 }
