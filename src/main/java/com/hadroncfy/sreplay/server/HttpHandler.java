@@ -6,10 +6,11 @@ import java.util.Random;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.DefaultFileRegion;
 import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.handler.codec.http.DefaultFullHttpResponse;
+import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -38,13 +39,17 @@ public class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
         }
         final File file = fileEntry.getFile();
         server.urls.remove(path);
-        // final RandomAccessFile raf = new RandomAccessFile(file, "r");
-        // final long len = raf.length();
-        final HttpResponse response = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.valueOf(200));
+        final HttpResponse response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.valueOf(200));
         response.headers().set("Content-Type", "application/zip");
         HttpUtil.setContentLength(response, file.length());
         ctx.write(response);
         ctx.write(new DefaultFileRegion(file, 0, file.length()));
-        ctx.writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);
+        ChannelFuture ch = ctx.writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);
+        ch.addListener(future -> {
+            if (!future.isSuccess()){
+                LOGGER.error("Channel error: " + future.cause().getMessage());
+            }
+            ctx.close();
+        });
     }
 }

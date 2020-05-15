@@ -15,27 +15,18 @@ import org.apache.logging.log4j.Logger;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
-import io.netty.channel.DefaultFileRegion;
 import io.netty.channel.MultithreadEventLoopGroup;
-import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.epoll.Epoll;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.epoll.EpollServerSocketChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.ServerSocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.http.DefaultFullHttpResponse;
-import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpRequestDecoder;
-import io.netty.handler.codec.http.HttpResponse;
-import io.netty.handler.codec.http.HttpResponseDecoder;
-import io.netty.handler.codec.http.HttpResponseStatus;
-import io.netty.handler.codec.http.HttpUtil;
-import io.netty.handler.codec.http.HttpVersion;
-import io.netty.handler.codec.http.LastHttpContent;
+import io.netty.handler.codec.http.HttpResponseEncoder;
+import io.netty.handler.stream.ChunkedWriteHandler;
 import net.minecraft.util.Lazy;
 
 public class Server {
@@ -52,7 +43,7 @@ public class Server {
     final Map<String, FileEntry> urls = new HashMap<>();
     private ChannelFuture channel;
 
-    public ChannelFuture bind(InetAddress address, int port){
+    public synchronized ChannelFuture bind(InetAddress address, int port){
         Class<? extends ServerSocketChannel> clazz;
         Lazy<? extends MultithreadEventLoopGroup> lazy;
         if (Epoll.isAvailable()){
@@ -63,19 +54,26 @@ public class Server {
             clazz = NioServerSocketChannel.class;
             lazy = DEFAULT_CHANNEL;
         }
-        return channel = new ServerBootstrap().group(lazy.get()).channel(clazz).localAddress(address, port).childHandler(new ChannelInitializer<Channel>() {
+        final ChannelFuture channel = new ServerBootstrap().group(lazy.get()).channel(clazz).localAddress(address, port).childHandler(new ChannelInitializer<Channel>() {
             @Override
             protected void initChannel(Channel ch) throws Exception {
                 ch.pipeline()
                 .addLast(new HttpRequestDecoder())
-                .addLast(new HttpResponseDecoder())
+                .addLast(new HttpResponseEncoder())
                 .addLast(new HttpObjectAggregator(1048576))
+                .addLast(new ChunkedWriteHandler())
                 .addLast(new HttpHandler(Server.this));
             }
         }).bind();
+        channel.addListener(future -> {
+            if (future.isSuccess()){
+                this.channel = channel;
+            }
+        });
+        return channel;
     }
 
-    public ChannelFuture stop(){
+    public synchronized ChannelFuture stop(){
         return channel.channel().closeFuture();
     }
 
@@ -93,10 +91,10 @@ public class Server {
         while (len --> 0){
             int i = random.nextInt(16);
             if (i >= 10){
-                sb.append(i - 10 + 'a');
+                sb.append((char)(i - 10 + 'a'));
             }
             else {
-                sb.append('0' + i);
+                sb.append((char)('0' + i));
             }
         }
         return sb.toString();

@@ -24,6 +24,7 @@ public class Config {
     public InetAddress serverHost = InetAddress.getLoopbackAddress();
     public String serverHostName = "localhost";
     public int serverPort = 12346;
+    public long downloadTimeout = 60000;
     public long sizeLimit = -1;
     public long timeLimit = -1;
     public boolean autoReconnect = true;

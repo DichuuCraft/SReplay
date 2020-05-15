@@ -12,6 +12,7 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
+import com.replaymod.replaystudio.data.Marker;
 
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
@@ -30,6 +31,7 @@ import java.util.regex.Matcher;
 import static net.minecraft.server.command.CommandManager.argument;
 import static net.minecraft.server.command.CommandSource.suggestMatching;
 import static com.hadroncfy.sreplay.recording.Photographer.MCPR;
+import static com.hadroncfy.sreplay.config.TextRenderer.render;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -59,7 +61,9 @@ public class SReplayCommand {
                 .then(buildPlayerParameterCommand())
                 .then(literal("pause").executes(this::pause))
                 .then(literal("resume").executes(this::resume))
-                .then(literal("marker").then(argument("marker", StringArgumentType.word()).executes(this::marker)))))
+                .then(literal("marker").executes(this::getMarkers)
+                    .then(literal("add").then(argument("marker", StringArgumentType.word()).executes(this::marker)))
+                    .then(literal("remove").then(argument("markerId", IntegerArgumentType.integer(1)).executes(this::removeMarker))))))
             .then(literal("list").executes(this::listRecordings))
             .then(literal("delete").then(argument("recording", StringArgumentType.word())
                 .suggests(this::suggestRecordingFile)
@@ -82,21 +86,52 @@ public class SReplayCommand {
         return suggestMatching(SReplayMod.listRecordings().stream().map(f -> f.getName()), sb);
     }
 
+    private int getMarkers(CommandContext<ServerCommandSource> ctx){
+        final Photographer p = requirePlayer(ctx);
+        if (p != null){
+            final String name = p.getGameProfile().getName();
+            final ServerCommandSource src = ctx.getSource();
+            src.sendFeedback(render(SReplayMod.getFormats().markerListTitle, name), false);
+            int i = 1;
+            for (Marker marker: p.getRecorder().getMarkers()){
+                src.sendFeedback(render(SReplayMod.getFormats().markerListItem, name, Integer.toString(i), marker.getName()), false);
+                i++;
+            }
+        }
+        return 0;
+    }
+
+    private int removeMarker(CommandContext<ServerCommandSource> ctx){
+        final Photographer p = requirePlayer(ctx);
+        if (p != null){
+            final String name = p.getGameProfile().getName();
+            final ServerCommandSource src = ctx.getSource();
+            final int id = IntegerArgumentType.getInteger(ctx, "markerId") - 1;
+            if (id < 0 || id >= p.getRecorder().getMarkers().size()){
+                src.sendError(SReplayMod.getFormats().invalidMarkerId);
+                return 1;
+            }
+            p.getRecorder().removeMarker(id);
+            src.sendFeedback(render(SReplayMod.getFormats().markerRemoved, name, Integer.toString(id + 1)), true);
+        }
+        return 0;
+    }
+
     private int getFile(CommandContext<ServerCommandSource> ctx){
         final String fName = StringArgumentType.getString(ctx, "fileName");
         final File f = new File(SReplayMod.getConfig().savePath, fName);
         if (f.exists()){
-            final String path = SReplayMod.getServer().addFile(f, 30000);
+            final String path = SReplayMod.getServer().addFile(f, SReplayMod.getConfig().downloadTimeout);
             String url = "http://" + SReplayMod.getConfig().serverHostName;
             final int port = SReplayMod.getConfig().serverPort;
             if (port != 80){
                 url += ":" + port;
             }
             url += path;
-            ctx.getSource().sendFeedback(TextRenderer.render(SReplayMod.getFormats().downloadUrl, url), false);
+            ctx.getSource().sendFeedback(render(SReplayMod.getFormats().downloadUrl, url), false);
         }
         else {
-            ctx.getSource().sendError(TextRenderer.render(SReplayMod.getFormats().fileNotFound, fName));
+            ctx.getSource().sendError(render(SReplayMod.getFormats().fileNotFound, fName));
             return 1;
         }
         return 0;
@@ -105,15 +140,20 @@ public class SReplayCommand {
     private int startServer(CommandContext<ServerCommandSource> ctx){
         final ServerCommandSource src = ctx.getSource();
         final MinecraftServer server = src.getMinecraftServer();
-        final ChannelFuture ch = SReplayMod.getServer().bind(SReplayMod.getConfig().serverHost, SReplayMod.getConfig().serverPort);
-        ch.addListener(future -> {
-            if (future.isSuccess()){
-                server.getPlayerManager().broadcastChatMessage(SReplayMod.getFormats().serverStarted, true);
-            }
-            else {
-                src.sendError(TextRenderer.render(SReplayMod.getFormats().serverStartFailed, future.cause().getMessage()));
-            }
-        });
+        try {
+            final ChannelFuture ch = SReplayMod.getServer().bind(SReplayMod.getConfig().serverHost, SReplayMod.getConfig().serverPort);
+            ch.addListener(future -> {
+                if (future.isSuccess()){
+                    server.getPlayerManager().broadcastChatMessage(SReplayMod.getFormats().serverStarted, true);
+                }
+                else {
+                    src.sendError(render(SReplayMod.getFormats().serverStartFailed, future.cause().getMessage()));
+                }
+            });
+        }
+        catch(Exception e){
+            e.printStackTrace();
+        }
         return 0;
     }
 
@@ -126,7 +166,7 @@ public class SReplayCommand {
                 server.getPlayerManager().broadcastChatMessage(SReplayMod.getFormats().serverStopped, true);
             }
             else {
-                src.sendError(TextRenderer.render(SReplayMod.getFormats().serverStopFailed, future.cause().getMessage()));
+                src.sendError(render(SReplayMod.getFormats().serverStopFailed, future.cause().getMessage()));
             }
         });
         return 0;
@@ -135,7 +175,7 @@ public class SReplayCommand {
     private int getName(CommandContext<ServerCommandSource> ctx){
         Photographer p = requirePlayer(ctx);
         if (p != null){
-            ctx.getSource().sendFeedback(TextRenderer.render(SReplayMod.getFormats().recordingFile, p.getGameProfile().getName(), p.getSaveName()), false);
+            ctx.getSource().sendFeedback(render(SReplayMod.getFormats().recordingFile, p.getGameProfile().getName(), p.getSaveName()), false);
             return 1;
         }
         return 0;
@@ -149,10 +189,11 @@ public class SReplayCommand {
                 name = name.substring(0, name.length() - MCPR.length());
             }
             if (Photographer.checkForSaveFileDupe(ctx.getSource().getMinecraftServer(), SReplayMod.getConfig().savePath, name)){
-                ctx.getSource().sendError(TextRenderer.render(SReplayMod.getFormats().recordFileExists, name));
+                ctx.getSource().sendError(render(SReplayMod.getFormats().recordFileExists, name));
                 return 0;
             }
             p.setSaveName(name);
+            ctx.getSource().sendFeedback(render(SReplayMod.getFormats().renamedFile, p.getGameProfile().getName(), name), true);
             return 1;
         }
         return 0;
@@ -217,7 +258,7 @@ public class SReplayCommand {
         }
         else {
             try {
-                ctx.getSource().sendFeedback(TextRenderer.render(SReplayMod.getConfig().formats.playerNotFound, name), true);
+                ctx.getSource().sendFeedback(render(SReplayMod.getConfig().formats.playerNotFound, name), true);
             }
             catch(Exception e){
                 e.printStackTrace();
@@ -231,7 +272,7 @@ public class SReplayCommand {
         if (p != null){
             String name = StringArgumentType.getString(ctx, "marker");
             p.getRecorder().addMarker(name);
-            ctx.getSource().getMinecraftServer().getPlayerManager().broadcastChatMessage(TextRenderer.render(SReplayMod.getFormats().markerAdded, p.getGameProfile().getName(), name), false);
+            ctx.getSource().getMinecraftServer().getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().markerAdded, p.getGameProfile().getName(), name), false);
             return 1;
         }
         else {
@@ -243,7 +284,7 @@ public class SReplayCommand {
         Photographer p = requirePlayer(ctx);
         if (p != null){
             p.getRecorder().pauseRecording();
-            ctx.getSource().getMinecraftServer().getPlayerManager().broadcastChatMessage(TextRenderer.render(SReplayMod.getFormats().recordingPaused, p.getGameProfile().getName()), false);
+            ctx.getSource().getMinecraftServer().getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().recordingPaused, p.getGameProfile().getName()), false);
             return 1;
         }
         else {
@@ -255,7 +296,7 @@ public class SReplayCommand {
         Photographer p = requirePlayer(ctx);
         if (p != null){
             p.getRecorder().resumeRecording();
-            ctx.getSource().getMinecraftServer().getPlayerManager().broadcastChatMessage(TextRenderer.render(SReplayMod.getFormats().recordingResumed, p.getGameProfile().getName()), false);
+            ctx.getSource().getMinecraftServer().getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().recordingResumed, p.getGameProfile().getName()), false);
             return 1;
         }
         else {
@@ -266,11 +307,11 @@ public class SReplayCommand {
     public int reload(CommandContext<ServerCommandSource> ctx){
         try {
             SReplayMod.loadConfig();
-            ctx.getSource().sendFeedback(TextRenderer.render(SReplayMod.getFormats().reloadedConfig), false);
+            ctx.getSource().sendFeedback(render(SReplayMod.getFormats().reloadedConfig), false);
             return 1;
         } catch (IOException e) {
             e.printStackTrace();
-            ctx.getSource().sendFeedback(TextRenderer.render(SReplayMod.getFormats().failedToReloadConfig, e.toString()), false);
+            ctx.getSource().sendFeedback(render(SReplayMod.getFormats().failedToReloadConfig, e.toString()), false);
             return 0;
         }
     }
@@ -293,10 +334,10 @@ public class SReplayCommand {
 
     public int listRecordings(CommandContext<ServerCommandSource> ctx) {
         final ServerCommandSource src = ctx.getSource();
-        src.sendFeedback(SReplayMod.getFormats().recordingFileListHead, true);
+        src.sendFeedback(SReplayMod.getFormats().recordingFileListHead, false);
         SReplayMod.listRecordings().forEach(f -> {
             String size = String.format("%.2f", f.length() / 1024F / 1024F);
-            src.sendFeedback(TextRenderer.render(SReplayMod.getFormats().recordingFileItem, f.getName(), size), false);
+            src.sendFeedback(render(SReplayMod.getFormats().recordingFileItem, f.getName(), size), false);
         });
         
         return 0;
@@ -308,14 +349,14 @@ public class SReplayCommand {
         final MinecraftServer server = src.getMinecraftServer();
         if (rec.exists()) {
             String code = Integer.toString(rand.nextInt(100));
-            src.sendFeedback(TextRenderer.render(SReplayMod.getFormats().aboutToDeleteRecording, rec.getName()), true);
-            src.sendFeedback(TextRenderer.render(SReplayMod.getFormats().confirmingHint, code), false);
+            src.sendFeedback(render(SReplayMod.getFormats().aboutToDeleteRecording, rec.getName()), true);
+            src.sendFeedback(render(SReplayMod.getFormats().confirmingHint, code), false);
             cm.submit(src.getName(), code, (match, cancelled) -> {
                 if (!cancelled) {
                     if (match) {
                         rec.delete();
                         server.getPlayerManager()
-                            .sendToAll(TextRenderer.render(SReplayMod.getFormats().deletedRecordingFile, src.getName(), rec.getName()));
+                            .sendToAll(render(SReplayMod.getFormats().deletedRecordingFile, src.getName(), rec.getName()));
                     } else {
                         src.sendFeedback(SReplayMod.getFormats().incorrectConfirmationCode, false);
                     }
@@ -324,7 +365,7 @@ public class SReplayCommand {
                 }
             });
         } else {
-            src.sendFeedback(TextRenderer.render(SReplayMod.getFormats().fileNotFound, rec.getName()), true);
+            src.sendFeedback(render(SReplayMod.getFormats().fileNotFound, rec.getName()), true);
         }
         return 0;
     }
@@ -334,7 +375,7 @@ public class SReplayCommand {
         if (p != null){
             Vec3d pos = ctx.getSource().getPosition();
             p.tp(ctx.getSource().getWorld().getDimension().getType(), pos.x, pos.y, pos.z);
-            ctx.getSource().getMinecraftServer().getPlayerManager().broadcastChatMessage(TextRenderer.render(SReplayMod.getFormats().teleportedBotToYou, p.getGameProfile().getName(), ctx.getSource().getName()), true);
+            ctx.getSource().getMinecraftServer().getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().teleportedBotToYou, p.getGameProfile().getName(), ctx.getSource().getName()), true);
             LOGGER.info("Teleported " + p.getGameProfile().getName() + " to " + ctx.getSource().getName());
             return 1;
         }
@@ -357,7 +398,7 @@ public class SReplayCommand {
             return 0;
         }
         if (server.getPlayerManager().getPlayer(pName) != null) {
-            src.sendFeedback(TextRenderer.render(SReplayMod.getFormats().playerIsLoggedIn, pName), true);
+            src.sendFeedback(render(SReplayMod.getFormats().playerIsLoggedIn, pName), true);
             return 0;
         }
 
@@ -373,7 +414,7 @@ public class SReplayCommand {
             Photographer photographer = Photographer.create(pName, server, src.getWorld().getDimension().getType(), src.getPosition(), SReplayMod.getConfig().savePath);
             photographer.connect(saveName);
         } catch (IOException e) {
-            src.sendFeedback(TextRenderer.render(SReplayMod.getFormats().failedToStartRecording, e.toString()), false);
+            src.sendFeedback(render(SReplayMod.getFormats().failedToStartRecording, e.toString()), false);
             e.printStackTrace();
         }
         return 1;

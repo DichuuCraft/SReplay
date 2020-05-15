@@ -3,7 +3,9 @@ package com.hadroncfy.sreplay.recording;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -65,7 +67,7 @@ public class Recorder implements IPacketListener {
     private boolean paused = false;
     private boolean gPaused = false;
     private boolean followTick = false;
-    private final Set<Marker> markers = new HashSet<>();
+    private final List<Marker> markers = new ArrayList<>();
 
     private ISizeLimitExceededListener limiter = null;
 
@@ -224,6 +226,44 @@ public class Recorder implements IPacketListener {
         m.setName(name);
         m.setTime((int) getRecordedTime());
         markers.add(m);
+
+        saveMarkers();
+    }
+
+    public List<Marker> getMarkers(){
+        return markers;
+    }
+
+    public void removeMarker(int i){
+        markers.remove(i);
+        saveMarkers();
+    }
+
+    private void saveMetadata(){
+        saveService.submit(() -> {
+            String[] players = new String[uuids.size()];
+            uuids.stream().map(uuid -> uuid.toString()).collect(Collectors.toList()).toArray(players);
+            metaData.setPlayers(players);
+            try {
+                replayFile.writeMetaData(metaData);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    private void saveMarkers(){
+        if (markers.size() > 0){
+            saveService.submit(() -> {
+                Set<Marker> m = new HashSet<>();
+                m.addAll(markers);
+                try {
+                    replayFile.writeMarkers(m);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+        }
     }
 
     public CompletableFuture<Void> saveRecording(File dest) {
@@ -233,6 +273,8 @@ public class Recorder implements IPacketListener {
             server.getPlayerManager()
                     .broadcastChatMessage(TextRenderer.render(SReplayMod.getFormats().savingRecordingFile, profile.getName()), true);
             return CompletableFuture.runAsync(() -> {
+                saveMetadata();
+                saveMarkers();
                 saveService.shutdown();
                 try {
                     saveService.awaitTermination(10, TimeUnit.SECONDS);
@@ -241,15 +283,6 @@ public class Recorder implements IPacketListener {
                 }
                 try {
                     synchronized (replayFile) {
-                        String[] players = new String[uuids.size()];
-                        uuids.stream().map(uuid -> uuid.toString()).collect(Collectors.toList()).toArray(players);
-                        metaData.setPlayers(players);
-                        replayFile.writeMetaData(metaData);
-    
-                        if (markers.size() > 0){
-                            replayFile.writeMarkers(markers);
-                        }
-    
                         replayFile.saveTo(dest);
                         replayFile.close();
                     }
@@ -273,6 +306,7 @@ public class Recorder implements IPacketListener {
         if (!stopped){
             if (p instanceof PlayerSpawnS2CPacket){
                 uuids.add(((PlayerSpawnS2CPacketAccessor) p).getUUID());
+                saveMetadata();
             }
             if (p instanceof DisconnectS2CPacket){
                 return;
