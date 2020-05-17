@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -55,7 +56,8 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     private HackyClientConnection connection;
     private Recorder recorder;
     private final File outputDir;
-    private int trackedPlayers = 0;
+    // private int trackedPlayers = 0;
+    private final List<Entity> trackedPlayers = new ArrayList<>();
 
     private String recordingFileName, saveFileName;
 
@@ -137,7 +139,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
 
         setHealth(20.0F);
         removed = false;
-        trackedPlayers = 0;
+        trackedPlayers.clear();
         server.getPlayerManager().onPlayerConnect(connection, this);
         interactionManager.setGameMode(MODE);
         getServerWorld().getChunkManager().updateCameraPosition(this);
@@ -171,7 +173,8 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     public void onStartedTracking(Entity entity) {
         super.onStartedTracking(entity);
         if (isRealPlayer(entity)){
-            updatePause(1);
+            trackedPlayers.add(entity);
+            updatePause();
         }
     }
 
@@ -179,32 +182,28 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     public void onStoppedTracking(Entity entity) {
         super.onStoppedTracking(entity);
         if (isRealPlayer(entity)){
-            updatePause(-1);
+            trackedPlayers.remove(entity);
+            updatePause();
         }
     }
 
     public void setAutoPause(boolean b){
         rparam.autoPause = b;
-        if (recorder != null){
-            if (b && trackedPlayers <= 0){
-                recorder.pauseRecording();
-            }
-        }
+        updatePause();
     }
 
-    private void updatePause(int delta){
+    private void updatePause(){
         if (recorder != null && rparam.autoPause){
             final String name = getGameProfile().getName();
-            if (trackedPlayers > 0 && trackedPlayers + delta <= 0){
+            if (trackedPlayers.size() == 0 && !recorder.isRecordingPaused()){
                 recorder.pauseRecording();
                 server.getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().autoPaused, name), true);
             }
-            if (trackedPlayers <= 0 && trackedPlayers + delta > 0){
+            if (trackedPlayers.size() > 0 && recorder.isRecordingPaused()){
                 recorder.resumeRecording();
                 server.getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().autoResumed, name), true);
             }
         }
-        trackedPlayers += delta;
     }
 
     private static String timeToString(long ms){
