@@ -63,7 +63,7 @@ public class SReplayMod implements ModInitializer {
         else {
             config = new Config();
         }
-        try (Writer writer = new OutputStreamWriter(new FileOutputStream(file))){
+        try (Writer writer = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)){
             writer.write(Config.GSON.toJson(config));
         }
     }
