@@ -288,6 +288,9 @@ public class Recorder implements IPacketListener {
                     e.printStackTrace();
                     throw new CompletionException(e);
                 }
+            }, r -> {
+                final Thread t = new Thread(r, "Recording file save thread");
+                t.start();
             });
         }
         else {

@@ -7,6 +7,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.CompletableFuture;
 
 import com.hadroncfy.sreplay.SReplayMod;
 import com.hadroncfy.sreplay.config.TextRenderer;
@@ -52,11 +53,10 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     });
     private final RecordingParam rparam;
     private int reconnectCount = 0;
-    private Timer tablistUpdater;
+    private long lastTablistUpdateTime;
     private HackyClientConnection connection;
     private Recorder recorder;
     private final File outputDir;
-    // private int trackedPlayers = 0;
     private final List<Entity> trackedPlayers = new ArrayList<>();
 
     private String recordingFileName, saveFileName;
@@ -126,16 +126,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         
         recorder.setOnSizeLimitExceededListener(this);
         recorder.start();
-
-        tablistUpdater = new Timer();
-        tablistUpdater.scheduleAtFixedRate(new TimerTask(){
-            @Override
-            public void run() {
-                if (!recorder.isSoftPaused()){
-                    server.getPlayerManager().sendToAll(new PlayerListS2CPacket(Action.UPDATE_DISPLAY_NAME, Photographer.this));
-                }
-            }
-        }, 1000, 1000);
+        lastTablistUpdateTime = System.currentTimeMillis();
 
         setHealth(20.0F);
         removed = false;
@@ -159,6 +150,14 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         }
         super.tick();
         method_14226();// playerTick
+        
+        final long now = System.currentTimeMillis();
+        if (now - lastTablistUpdateTime >= 1000){
+            lastTablistUpdateTime = now;
+            if (!recorder.isSoftPaused()){
+                server.getPlayerManager().sendToAll(new PlayerListS2CPacket(Action.UPDATE_DISPLAY_NAME, Photographer.this));
+            }
+        }
     }
 
     private boolean isRealPlayer(Entity entity){
@@ -271,14 +270,10 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     }
 
     public void kill(Runnable r, boolean async) {
-        if (tablistUpdater != null){
-            tablistUpdater.cancel();
-            tablistUpdater = null;
-        }
         if (recorder != null){
             final File saveFile = new File(outputDir, getSaveName() + MCPR);
             recorder.stop();
-            recorder.saveRecording(saveFile)
+            CompletableFuture<Void> f = recorder.saveRecording(saveFile)
             .thenRun(() -> {
                 server.getPlayerManager().broadcastChatMessage(
                     TextRenderer.render(SReplayMod.getFormats().savedRecordingFile, getGameProfile().getName(), saveFile.getName()), false);
@@ -290,13 +285,23 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
                 return null;
             });
             recorder = null;
+            if (!async){
+                f.join();
+            }
         }
         final Runnable task =  () -> {
             if (networkHandler != null){
                 networkHandler.onDisconnected(new LiteralText("Killed"));
             }
             if (r != null){
-                r.run();
+                // Whatever went wrong, save the recording first
+                try {
+                    r.run();
+                }
+                catch(Throwable e){
+                    LOGGER.error("error killing photographer", e);
+                    e.printStackTrace();
+                }
             }
         };
         if (async){
