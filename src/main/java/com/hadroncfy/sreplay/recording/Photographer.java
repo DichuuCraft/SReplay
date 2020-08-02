@@ -5,8 +5,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.CompletableFuture;
 
 import com.hadroncfy.sreplay.SReplayMod;
@@ -17,6 +15,7 @@ import com.mojang.authlib.GameProfile;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.network.NetworkSide;
+import net.minecraft.network.packet.s2c.play.ChunkLoadDistanceS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerListS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerRespawnS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerListS2CPacket.Action;
@@ -82,7 +81,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     }
 
     public static Photographer create(String name, MinecraftServer server, DimensionType dim, Vec3d pos, File outputDir){
-        return create(name, server, dim, pos, outputDir, new RecordingParam());
+        return create(name, server, dim, pos, outputDir, RecordingParam.createDefaultRecordingParam(SReplayMod.getConfig(), server.getPlayerManager().getViewDistance()));
     }
 
     private boolean checkForRecordingFileDupe(String name){
@@ -114,6 +113,11 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         saveFileName = name;
     }
 
+    public void setWatchDistance(int distance){
+        rparam.setWatchDistance(distance);
+        recorder.onPacket(new ChunkLoadDistanceS2CPacket(distance));
+    }
+
     private void connect() throws IOException{
         recordingFileName = genRecordingFileName(getSaveName());
         
@@ -132,6 +136,9 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         removed = false;
         trackedPlayers.clear();
         server.getPlayerManager().onPlayerConnect(connection, this);
+        if (rparam.getWatchDistance() != server.getPlayerManager().getViewDistance()){
+            recorder.onPacket(new ChunkLoadDistanceS2CPacket(rparam.getWatchDistance()));
+        }
         interactionManager.setGameMode(MODE);
         getServerWorld().getChunkManager().updateCameraPosition(this);
     }

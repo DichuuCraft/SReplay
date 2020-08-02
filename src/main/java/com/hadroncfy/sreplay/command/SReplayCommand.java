@@ -247,6 +247,13 @@ public class SReplayCommand {
 					p.setAutoPause(val);
 					return 0;
 				}
+            }.build())
+            .then(new RecordParameterExecutor<Integer>("watchDistance", IntegerArgumentType.integer(0), int.class){
+                @Override
+                protected int run(CommandContext<ServerCommandSource> context, Photographer p, Integer val) {
+                    p.setWatchDistance(val);
+                    return 0;
+                }                
             }.build());
     }
 

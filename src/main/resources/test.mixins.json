@@ -7,7 +7,8 @@
     "MixinCommandManager",
     "MixinMinecraftServer",
     "PlayerSpawnS2CPacketAccessor",
-    "PlayerManagerAccessor"
+    "PlayerManagerAccessor",
+    "MixinThreadedAnvilChunkStorage"
   ],
   "client": [
     "MixinIntegratedServer"
