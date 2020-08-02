@@ -9,6 +9,7 @@ import java.util.concurrent.CompletableFuture;
 
 import com.hadroncfy.sreplay.SReplayMod;
 import com.hadroncfy.sreplay.config.TextRenderer;
+import com.hadroncfy.sreplay.interfaces.IChunkSender;
 import com.hadroncfy.sreplay.mixin.PlayerManagerAccessor;
 import com.mojang.authlib.GameProfile;
 
@@ -23,14 +24,17 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.ServerTask;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.network.ServerPlayerInteractionManager;
+import net.minecraft.server.world.ServerChunkManager;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.LiteralText;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Lazy;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
+import net.minecraft.world.chunk.WorldChunk;
 import net.minecraft.world.dimension.DimensionType;
 
 import org.apache.logging.log4j.LogManager;
@@ -116,6 +120,16 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     public void setWatchDistance(int distance){
         rparam.setWatchDistance(distance);
         recorder.onPacket(new ChunkLoadDistanceS2CPacket(distance));
+        int cx = MathHelper.floor(x) >> 4, cz = MathHelper.floor(z) >> 4;
+        ServerChunkManager chunkManager = (ServerChunkManager) world.getChunkManager();
+        for (int i = -distance; i <= distance; i++){
+            for (int j = -distance; j <= distance; j++){
+                WorldChunk chunk = chunkManager.method_21730(cx + i, cz + j);
+                if (chunk != null){
+                    ((IChunkSender)chunkManager.threadedAnvilChunkStorage).sendChunk(this, chunk);
+                }
+            }
+        }
     }
 
     private void connect() throws IOException{
@@ -243,6 +257,9 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
             size += "/" + String.format("%.2f", rparam.sizeLimit / 1024F / 1024F) + "M";
         }
         Text ret = new LiteralText(getGameProfile().getName()).setStyle(new Style().setItalic(true).setColor(Formatting.AQUA));
+        if (rparam.getWatchDistance() != server.getPlayerManager().getViewDistance()){
+            ret.append(new LiteralText(" (" + rparam.getWatchDistance() + ")").setStyle(new Style().setColor(Formatting.GRAY)));
+        }
         if (rparam.autoReconnect){
             ret.append(new LiteralText(" [R]").setStyle(new Style().setItalic(false).setColor(Formatting.DARK_PURPLE)));
         }
@@ -390,5 +407,14 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
             }
         }
         return false;
+    }
+
+    public static int getRealViewDistance(ServerPlayerEntity player, int watchDistance){
+        if (player instanceof Photographer){
+            return ((Photographer)player).getRecordingParam().getWatchDistance();
+        }
+        else {
+            return watchDistance;
+        }
     }
 }

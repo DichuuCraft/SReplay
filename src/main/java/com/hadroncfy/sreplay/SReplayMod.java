@@ -54,7 +54,11 @@ public class SReplayMod implements ModInitializer {
     }
 
     public static void loadConfig() throws IOException, JsonParseException {
-        File file = new File("config", "sreplay.json");
+        File dir = new File("config");
+        if (!dir.exists()){
+            dir.mkdirs();
+        }
+        File file = new File(dir, "sreplay.json");
         if (file.exists()){
             try (Reader reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8)){
                 config = Config.GSON.fromJson(reader, Config.class);
