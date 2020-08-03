@@ -21,12 +21,13 @@ public class Config {
 
     public File savePath = new File("replay_recordings");
     public String serverName = "localhost";
-    public InetAddress serverHost = InetAddress.getLoopbackAddress();
+    public InetAddress serverListenAddress = InetAddress.getLoopbackAddress();
     public String serverHostName = "localhost";
     public int serverPort = 12346;
     public long downloadTimeout = 60000;
     public int sizeLimit = -1;
     public int timeLimit = -1;
+    public int itemsPerPage = 20;
     public boolean autoReconnect = true;
     public Pattern playerNamePattern = Pattern.compile("^cam_.*$");
 

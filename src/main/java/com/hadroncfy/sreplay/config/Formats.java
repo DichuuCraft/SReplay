@@ -18,6 +18,9 @@ public class Formats {
     private static Text white(String s){
         return new LiteralText(s).setStyle(new Style().setColor(Formatting.WHITE));
     }
+    private static Text yellow(String s){
+        return new LiteralText(s).setStyle(new Style().setColor(Formatting.YELLOW));
+    }
 
     public Text playerNotFound = red("[SReplay] 玩家$1未找到（或不是录像机器人）"), 
     recordFileExists = red("[SReplay] 录像文件$1已存在"),
@@ -118,10 +121,38 @@ public class Formats {
     ),
     positiveParam = red("[SReplay] 此参数须为正整数"),
     nonNegativeOrMinusOne = red("[SReplay] 此参数须为-1或非负数"),
-    invalidEnum = red("[SReplay] 无效的值");
+    invalidEnum = red("[SReplay] 无效的值"),
+    paginationFooter = new LiteralText("第").append(
+        green("($1/$2)")
+    ).append(white("页")),
+    invalidPageNum = red("[SReplay] 无效的页码"),
+    noSuchParam = red("[SReplay] 无此参数"),
+    paramHelp = yellow("$1: ").append(green("$2")),
+    botLocation = white("[SReplay] ")
+        .append(green("$1"))
+        .append(white("位于"))
+        .append(white("[x: $2, y: $3, z: $4, dim: $5]"));
 
     public Text[] help = new Text[]{
         new LiteralText("====== SReplay 用法 ======").setStyle(new Style().setColor(Formatting.YELLOW)),
-        green("/sreplay ")
+        green("/sreplay player <玩家名> ..."),
+        green("- spawn ").append(white("召唤一个录像假人并开始录制")),
+        green("- kill ").append(white("踢掉指定的录像假人并保存录像文件")),
+        green("- respawn ").append(white("先踢掉假人，保存文件，并在原地开始新一轮的录制")),
+        green("- name [文件名]").append(white("获取或设置录像文件名")),
+        green("- tp").append(white("将一个录像假人传送到你的位置")),
+        green("- pause").append(white("暂停录制")),
+        green("- resume").append(white("继续录制")),
+        green("- locate").append(white("显示假人的位置")),
+        green("- marker list [页码]").append(white("列出所有已添加的标记")),
+        green("- marker add [标记名]").append(white("在当前位置添加一个标记")),
+        green("- marker remove [标记序号]").append(white("删除一个标记")),
+        green("- set <参数名> [参数值]").append(white("设置或获取相应的参数，查看详情请使用")).append(green("/sreplay help set <参数名>")),
+        white(""),
+        green("/sreplay list [页码]").append(white("列出所有已录制的文件")),
+        green("/sreplay delete <文件名>").append(white("删除给定的录像文件。需要用")).append(green("/sreplay confirm <确认码>")).append(white("来确认")),
+        green("/sreplay reload").append(white("重新加载配置文件")),
+        green("/sreplay server <start|stop>").append(white("启动/停止用于下载录像文件的http服务器")),
+        green("/sreplay get <文件名>").append(white("下载指定的录像文件。该命令会返回一个用于下载文件的临时链接。"))
     };
 }

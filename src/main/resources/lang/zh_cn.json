@@ -1,0 +1,13 @@
+{
+    "sreplay.desc": "描述",
+    "sreplay.name": "名称",
+    "sreplay.type": "类型",
+
+    "sreplay.param.sizeLimit.desc": "录像大小上限，单位是MB，-1代表无上限。当上限超过时会自动停止录制。",
+    "sreplay.param.timeLimit.desc": "录像时间上限，单位是秒，-1代表无上限。当上限超过时会自动停止录制。",
+    "sreplay.param.autoPause.desc": "自动暂停开关，如果为true就会在视距范围内无玩家时暂停录制。",
+    "sreplay.param.autoReconnect.desc": "自动续录开关，如果为true就会在自动停止录制后自动开始新一轮的录制。",
+    "sreplay.param.watchDistance.desc": "录像视距，单位为区块。增大该值不会增大录像假人的区块加载范围，因此还需要用假人加载区块。",
+    "sreplay.param.dayTime.desc": "锁定录像的世界时间为该参数值，-1代表不锁定。锁定时间后可停止昼夜循环，在渲染长时间录像时能提高渲染的效果",
+    "sreplay.param.forcedWeather.desc": "锁定录像中的天气。"
+}

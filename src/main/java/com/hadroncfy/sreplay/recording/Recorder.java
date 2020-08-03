@@ -48,6 +48,7 @@ public class Recorder implements IPacketListener {
     private static final Logger LOGGER = LogManager.getLogger();
     private final MinecraftServer server;
     private final GameProfile profile;
+    private final WeatherView wv;
     
     private final Set<UUID> uuids = new HashSet<>();
     
@@ -72,9 +73,10 @@ public class Recorder implements IPacketListener {
 
     private ISizeLimitExceededListener limiter = null;
 
-    public Recorder(GameProfile profile, MinecraftServer server, File outputPath, RecordingParam param) throws IOException {
+    public Recorder(GameProfile profile, MinecraftServer server, WeatherView wv, File outputPath, RecordingParam param) throws IOException {
         this.server = server;
         this.profile = profile;
+        this.wv = wv;
 
         this.param = param;
 
@@ -334,6 +336,8 @@ public class Recorder implements IPacketListener {
                 setWeather(param.forcedWeather);
                 break;
             case NONE:
+                setWeather(wv.getWeather());
+                break;
         }
     }
 

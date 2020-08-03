@@ -15,6 +15,7 @@ import com.replaymod.replaystudio.data.Marker;
 
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.text.Text;
 import net.minecraft.util.math.Vec3d;
 
 import static net.minecraft.server.command.CommandManager.literal;
@@ -23,14 +24,18 @@ import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.Random;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BiConsumer;
 import java.util.regex.Matcher;
 
 import static net.minecraft.server.command.CommandManager.argument;
 import static net.minecraft.server.command.CommandSource.suggestMatching;
 import static com.hadroncfy.sreplay.recording.Photographer.MCPR;
 import static com.hadroncfy.sreplay.config.TextRenderer.render;
+import static com.hadroncfy.sreplay.SReplayMod.getConfig;
+import static com.hadroncfy.sreplay.SReplayMod.getFormats;
+import static com.hadroncfy.sreplay.Util.tryGetArg;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -41,65 +46,114 @@ public class SReplayCommand {
     private static final Logger LOGGER = LogManager.getLogger();
     private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy_MM_dd_HH_mm_ss");
 
-    private final ConfirmationManager cm = new ConfirmationManager(20000, 999);
+    private static final ConfirmationManager cm = new ConfirmationManager(20000, 999);
 
     public SReplayCommand(){
     }
-
-    public void register(CommandDispatcher<ServerCommandSource> d) {
+    public static void register(CommandDispatcher<ServerCommandSource> d) {
         final LiteralArgumentBuilder<ServerCommandSource> b = literal("sreplay")
             .then(literal("player").then(argument("player", StringArgumentType.word())
                 .suggests((src, sb) -> suggestMatching(Photographer.listFakes(src.getSource().getMinecraftServer()).stream().map(p -> p.getGameProfile().getName()), sb))
-                .then(literal("spawn").executes(this::playerSpawn))
-                .then(literal("kill").executes(this::playerKill))
-                .then(literal("respawn").executes(this::playerRespawn))
-                .then(literal("tp").executes(this::playerTp))
-                .then(literal("name").executes(this::getName)
-                    .then(argument("fileName", StringArgumentType.word()).executes(this::setName)))
+                .then(literal("spawn").executes(SReplayCommand::playerSpawn))
+                .then(literal("kill").executes(SReplayCommand::playerKill))
+                .then(literal("respawn").executes(SReplayCommand::playerRespawn))
+                .then(literal("tp").executes(SReplayCommand::playerTp))
+                .then(literal("name").executes(SReplayCommand::getName)
+                    .then(argument("fileName", StringArgumentType.word()).executes(SReplayCommand::setName)))
                 .then(Photographer.PARAM_MANAGER.buildCommand())
-                .then(literal("pause").executes(this::pause))
-                .then(literal("resume").executes(this::resume))
-                .then(literal("marker").executes(this::getMarkers)
-                    .then(literal("add").then(argument("marker", StringArgumentType.word()).executes(this::marker)))
-                    .then(literal("remove").then(argument("markerId", IntegerArgumentType.integer(1)).executes(this::removeMarker))))))
-            .then(literal("list").executes(this::listRecordings))
+                .then(literal("pause").executes(SReplayCommand::pause))
+                .then(literal("resume").executes(SReplayCommand::resume))
+                .then(literal("locate").executes(SReplayCommand::locate))
+                .then(literal("marker")
+                    .then(literal("list").executes(SReplayCommand::getMarkers)
+                        .then(argument("page", IntegerArgumentType.integer(1)).executes(SReplayCommand::getMarkers))
+                    .then(literal("add").then(argument("marker", StringArgumentType.word()).executes(SReplayCommand::marker)))
+                    .then(literal("remove").then(argument("markerId", IntegerArgumentType.integer(1)).executes(SReplayCommand::removeMarker)))))))
+            .then(literal("list").executes(SReplayCommand::listRecordings)
+                .then(argument("page", IntegerArgumentType.integer(1)).executes(SReplayCommand::listRecordings)))
             .then(literal("delete").then(argument("recording", StringArgumentType.word())
-                .suggests(this::suggestRecordingFile)
-                .executes(this::deleteRecording)))
+                .suggests(SReplayCommand::suggestRecordingFile)
+                .executes(SReplayCommand::deleteRecording)))
             .then(literal("confirm")
-                .then(argument("code", IntegerArgumentType.integer(0)).executes(this::confirm)))
-            .then(literal("cancel").executes(this::cancel))
-            .then(literal("reload").executes(this::reload))
+                .then(argument("code", IntegerArgumentType.integer(0)).executes(SReplayCommand::confirm)))
+            .then(literal("cancel").executes(SReplayCommand::cancel))
+            .then(literal("reload").executes(SReplayCommand::reload))
             .then(literal("server")
-                .then(literal("start").executes(this::startServer))
-                .then(literal("stop").executes(this::stopServer)))
+                .then(literal("start").executes(SReplayCommand::startServer))
+                .then(literal("stop").executes(SReplayCommand::stopServer)))
             .then(literal("get")
                 .then(argument("fileName", StringArgumentType.word())
-                .suggests(this::suggestRecordingFile)
-                .executes(this::getFile)));
+                .suggests(SReplayCommand::suggestRecordingFile)
+                .executes(SReplayCommand::getFile)))
+            .then(literal("help").executes(SReplayCommand::help)
+                .then(Photographer.PARAM_MANAGER.buildHelpCommand()));
         d.register(b);
     }
 
-    private CompletableFuture<Suggestions> suggestRecordingFile(CommandContext<ServerCommandSource> src, SuggestionsBuilder sb){
+    private static CompletableFuture<Suggestions> suggestRecordingFile(CommandContext<ServerCommandSource> src, SuggestionsBuilder sb){
         return suggestMatching(SReplayMod.listRecordings().stream().map(f -> f.getName()), sb);
     }
 
-    private int getMarkers(CommandContext<ServerCommandSource> ctx){
-        final Photographer p = requirePlayer(ctx);
-        if (p != null){
-            final String name = p.getGameProfile().getName();
-            final ServerCommandSource src = ctx.getSource();
-            src.sendFeedback(render(SReplayMod.getFormats().markerListTitle, name), false);
-            int i = 1;
-            for (Marker marker: p.getRecorder().getMarkers()){
-                src.sendFeedback(render(SReplayMod.getFormats().markerListItem, name, Integer.toString(i), marker.getName()), false);
-                i++;
-            }
+    private static int help(CommandContext<ServerCommandSource> ctx){
+        for (Text t: SReplayMod.getFormats().help){
+            ctx.getSource().sendFeedback(t, false);
         }
         return 0;
     }
 
-    private int removeMarker(CommandContext<ServerCommandSource> ctx){
+    private static int locate(CommandContext<ServerCommandSource> ctx){
+        Photographer p = requirePlayer(ctx);
+        if (p != null){
+            ctx.getSource().sendFeedback(render(getFormats().botLocation,
+                p.getGameProfile().getName(),
+                String.format("%.0f", p.x),
+                String.format("%.0f", p.y),
+                String.format("%.0f", p.z),
+                p.dimension.getRawId()
+            ), false);
+        }
+        return 0;
+    }
+
+    private static <T> void paginate(CommandContext<ServerCommandSource> ctx, List<T> p, BiConsumer<Integer, T> consumer){
+        ServerCommandSource src = ctx.getSource();
+        int page = tryGetArg(() -> IntegerArgumentType.getInteger(ctx, "page"), () -> 1) - 1;
+        int s = getConfig().itemsPerPage;
+        int start = page * s, end = start + s;
+        if (start >= p.size() || start < 0 || end < 0){
+            ctx.getSource().sendError(getFormats().invalidPageNum);
+            return;
+        }
+        if (end >= p.size()){
+            end = p.size() - 1;
+        }
+        int i = start;
+        for (T v: p.subList(start, end)){
+            consumer.accept(i++, v);
+        }
+
+        src.sendFeedback(render(getFormats().paginationFooter, page + 1, (int)Math.ceil(p.size() / (float)s)), false);
+    }
+
+    private static int helpSet(CommandContext<ServerCommandSource> ctx){
+        return 0;
+    }
+
+    private static int getMarkers(CommandContext<ServerCommandSource> ctx){
+        final Photographer p = requirePlayer(ctx);
+        if (p != null){
+            final String name = p.getGameProfile().getName();
+            final ServerCommandSource src = ctx.getSource();
+
+            src.sendFeedback(render(SReplayMod.getFormats().markerListTitle, name), false);
+            paginate(ctx, p.getRecorder().getMarkers(), (i, marker) -> {
+                src.sendFeedback(render(SReplayMod.getFormats().markerListItem, name, Integer.toString(i), marker.getName()), false);
+            });
+        }
+        return 0;
+    }
+
+    private static int removeMarker(CommandContext<ServerCommandSource> ctx){
         final Photographer p = requirePlayer(ctx);
         if (p != null){
             final String name = p.getGameProfile().getName();
@@ -115,7 +169,7 @@ public class SReplayCommand {
         return 0;
     }
 
-    private int getFile(CommandContext<ServerCommandSource> ctx){
+    private static int getFile(CommandContext<ServerCommandSource> ctx){
         final String fName = StringArgumentType.getString(ctx, "fileName");
         final File f = new File(SReplayMod.getConfig().savePath, fName);
         if (f.exists()){
@@ -135,11 +189,11 @@ public class SReplayCommand {
         return 0;
     }
 
-    private int startServer(CommandContext<ServerCommandSource> ctx){
+    private static int startServer(CommandContext<ServerCommandSource> ctx){
         final ServerCommandSource src = ctx.getSource();
         final MinecraftServer server = src.getMinecraftServer();
         try {
-            final ChannelFuture ch = SReplayMod.getServer().bind(SReplayMod.getConfig().serverHost, SReplayMod.getConfig().serverPort);
+            final ChannelFuture ch = SReplayMod.getServer().bind(SReplayMod.getConfig().serverListenAddress, SReplayMod.getConfig().serverPort);
             ch.addListener(future -> {
                 if (future.isSuccess()){
                     server.getPlayerManager().broadcastChatMessage(SReplayMod.getFormats().serverStarted, true);
@@ -155,7 +209,7 @@ public class SReplayCommand {
         return 0;
     }
 
-    private int stopServer(CommandContext<ServerCommandSource> ctx){
+    private static int stopServer(CommandContext<ServerCommandSource> ctx){
         final ServerCommandSource src = ctx.getSource();
         final MinecraftServer server = src.getMinecraftServer();
         final ChannelFuture ch = SReplayMod.getServer().stop();
@@ -170,7 +224,7 @@ public class SReplayCommand {
         return 0;
     }
 
-    private int getName(CommandContext<ServerCommandSource> ctx){
+    private static int getName(CommandContext<ServerCommandSource> ctx){
         Photographer p = requirePlayer(ctx);
         if (p != null){
             ctx.getSource().sendFeedback(render(SReplayMod.getFormats().recordingFile, p.getGameProfile().getName(), p.getSaveName()), false);
@@ -179,7 +233,7 @@ public class SReplayCommand {
         return 0;
     }
 
-    private int setName(CommandContext<ServerCommandSource> ctx){
+    private static int setName(CommandContext<ServerCommandSource> ctx){
         Photographer p = requirePlayer(ctx);
         if (p != null){
             String name = StringArgumentType.getString(ctx, "fileName");
@@ -214,7 +268,7 @@ public class SReplayCommand {
         }
     }
 
-    public int marker(CommandContext<ServerCommandSource> ctx){
+    public static int marker(CommandContext<ServerCommandSource> ctx){
         Photographer p = requirePlayer(ctx);
         if (p != null){
             String name = StringArgumentType.getString(ctx, "marker");
@@ -227,7 +281,7 @@ public class SReplayCommand {
         }
     }
 
-    public int pause(CommandContext<ServerCommandSource> ctx){
+    public static int pause(CommandContext<ServerCommandSource> ctx){
         Photographer p = requirePlayer(ctx);
         if (p != null){
             p.getRecorder().pauseRecording();
@@ -239,7 +293,7 @@ public class SReplayCommand {
         }
     }
 
-    public int resume(CommandContext<ServerCommandSource> ctx){
+    public static int resume(CommandContext<ServerCommandSource> ctx){
         Photographer p = requirePlayer(ctx);
         if (p != null){
             p.getRecorder().resumeRecording();
@@ -251,7 +305,7 @@ public class SReplayCommand {
         }
     }
 
-    public int reload(CommandContext<ServerCommandSource> ctx){
+    public static int reload(CommandContext<ServerCommandSource> ctx){
         try {
             SReplayMod.loadConfig();
             ctx.getSource().sendFeedback(render(SReplayMod.getFormats().reloadedConfig), false);
@@ -263,7 +317,7 @@ public class SReplayCommand {
         }
     }
 
-    public int confirm(CommandContext<ServerCommandSource> ctx) {
+    public static int confirm(CommandContext<ServerCommandSource> ctx) {
         final int code = IntegerArgumentType.getInteger(ctx, "code");
         if (!cm.confirm(ctx.getSource().getName(), code)) {
             ctx.getSource().sendFeedback(SReplayMod.getFormats().nothingToConfirm, false);
@@ -272,17 +326,18 @@ public class SReplayCommand {
         return 0;
     }
 
-    public int cancel(CommandContext<ServerCommandSource> ctx) {
+    public static int cancel(CommandContext<ServerCommandSource> ctx) {
         if (!cm.cancel(ctx.getSource().getName())) {
             ctx.getSource().sendFeedback(SReplayMod.getFormats().nothingToCancel, false);
         }
         return 0;
     }
 
-    public int listRecordings(CommandContext<ServerCommandSource> ctx) {
+    public static int listRecordings(CommandContext<ServerCommandSource> ctx) {
         final ServerCommandSource src = ctx.getSource();
         src.sendFeedback(SReplayMod.getFormats().recordingFileListHead, false);
-        SReplayMod.listRecordings().forEach(f -> {
+
+        paginate(ctx, SReplayMod.listRecordings(), (i, f) -> {
             String size = String.format("%.2f", f.length() / 1024F / 1024F);
             src.sendFeedback(render(SReplayMod.getFormats().recordingFileItem, f.getName(), size), false);
         });
@@ -290,7 +345,7 @@ public class SReplayCommand {
         return 0;
     }
 
-    public int deleteRecording(CommandContext<ServerCommandSource> ctx) {
+    public static int deleteRecording(CommandContext<ServerCommandSource> ctx) {
         final ServerCommandSource src = ctx.getSource();
         final File rec = new File(SReplayMod.getConfig().savePath, StringArgumentType.getString(ctx, "recording"));
         final MinecraftServer server = src.getMinecraftServer();
@@ -307,7 +362,7 @@ public class SReplayCommand {
         return 0;
     }
 
-    public int playerTp(CommandContext<ServerCommandSource> ctx) {
+    public static int playerTp(CommandContext<ServerCommandSource> ctx) {
         final Photographer p = requirePlayer(ctx);
         if (p != null){
             Vec3d pos = ctx.getSource().getPosition();
@@ -320,7 +375,7 @@ public class SReplayCommand {
         return 0;
     }
 
-    public int playerSpawn(CommandContext<ServerCommandSource> ctx) {
+    public static int playerSpawn(CommandContext<ServerCommandSource> ctx) {
         final String pName = StringArgumentType.getString(ctx, "player");
         final ServerCommandSource src = ctx.getSource();
         final MinecraftServer server = src.getMinecraftServer();
@@ -357,7 +412,7 @@ public class SReplayCommand {
         return 1;
     }
 
-    public int playerKill(CommandContext<ServerCommandSource> ctx) {
+    public static int playerKill(CommandContext<ServerCommandSource> ctx) {
         final Photographer p = requirePlayer(ctx);
         if (p != null){
             p.kill();
@@ -366,7 +421,7 @@ public class SReplayCommand {
         return 0;
     }
 
-    public int playerRespawn(CommandContext<ServerCommandSource> ctx) throws CommandSyntaxException {
+    public static int playerRespawn(CommandContext<ServerCommandSource> ctx) throws CommandSyntaxException {
         final Photographer p = requirePlayer(ctx);
         if (p != null) {
             p.reconnect();

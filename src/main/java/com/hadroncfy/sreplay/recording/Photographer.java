@@ -43,7 +43,7 @@ import org.apache.logging.log4j.Logger;
 
 import static com.hadroncfy.sreplay.config.TextRenderer.render;
 
-public class Photographer extends ServerPlayerEntity implements ISizeLimitExceededListener {
+public class Photographer extends ServerPlayerEntity implements ISizeLimitExceededListener, WeatherView {
     public static final String MCPR = ".mcpr";
     public static final ParamManager PARAM_MANAGER = new ParamManager(RecordingParam.class);
     private static final String RAW_SUBDIR = "raw";
@@ -142,7 +142,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         if (!raw.exists()){
             raw.mkdirs();
         }
-        recorder = new Recorder(getGameProfile(), server, new File(raw, recordingFileName), rparam);
+        recorder = new Recorder(getGameProfile(), server, this, new File(raw, recordingFileName), rparam);
         connection = new HackyClientConnection(NetworkSide.CLIENTBOUND, recorder);
         
         recorder.setOnSizeLimitExceededListener(this);
@@ -423,5 +423,16 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         else {
             return watchDistance;
         }
+    }
+
+    @Override
+    public ForcedWeather getWeather() {
+        if (world.isThundering()){
+            return ForcedWeather.THUNDER;
+        }
+        else if (world.isRaining()){
+            return ForcedWeather.RAIN;
+        }
+        return ForcedWeather.CLEAR;
     }
 }

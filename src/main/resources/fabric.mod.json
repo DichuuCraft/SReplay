@@ -10,7 +10,8 @@
   ],
   "contact": {
     "homepage": "https://github.com/DichuuCraft/SReplay",
-    "sources": "https://github.com/DichuuCraft/SReplay"
+    "sources": "https://github.com/DichuuCraft/SReplay",
+    "issues": "https://github.com/DichuuCraft/SReplay/issues"
   },
 
   "license": "MIT",
@@ -22,7 +23,7 @@
     ]
   },
   "mixins": [
-    "test.mixins.json"
+    "sreplay.mixins.json"
   ],
 
   "depends": {

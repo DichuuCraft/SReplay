@@ -10,25 +10,37 @@ import static com.hadroncfy.sreplay.SReplayMod.getFormats;
 import net.minecraft.text.Text;
 
 public class RecordingParam {
-    @Param(validators = SizeLimitValidator.class)
+    @Param(
+        desc = "sreplay.param.sizeLimit.desc",
+        validators = SizeLimitValidator.class
+    )
     public int sizeLimit = -1;
 
-    @Param(validators = TimeLimitValidator.class)
+    @Param(
+        desc = "sreplay.param.timeLimit.desc",
+        validators = TimeLimitValidator.class
+    )
     public int timeLimit = -1;
 
-    @Param
+    @Param(desc = "sreplay.param.autoReconnect.desc")
     public boolean autoReconnect = true;
     
-    @Param
+    @Param(desc = "sreplay.param.autoPause.desc")
     public boolean autoPause = false;
 
-    @Param(validators = PositiveValidator.class)
+    @Param(
+        desc = "sreplay.param.watchDistance.desc",
+        validators = PositiveValidator.class
+    )
     public int watchDistance;
 
-    @Param(validators = NonNegativeOrMinus1.class)
+    @Param(
+        desc = "sreplay.param.dayTime.desc",
+        validators = NonNegativeOrMinus1.class
+    )
     public int dayTime = -1;
 
-    @Param
+    @Param(desc = "sreplay.param.forcedWeather.desc")
     public ForcedWeather forcedWeather = ForcedWeather.NONE;
 
     public static RecordingParam createDefaultRecordingParam(Config config, int watchDistance) {
@@ -82,15 +94,5 @@ public class RecordingParam {
             }
             return true;
         }
-    }
-
-    private static class RecordingFileNameValidator implements Validator<String> {
-
-        @Override
-        public boolean validate(String val, Consumer<Text> errorReceiver) {
-            
-            return false;
-        }
-        
     }
 }

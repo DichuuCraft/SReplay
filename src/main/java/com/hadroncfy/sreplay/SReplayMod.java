@@ -84,10 +84,11 @@ public class SReplayMod implements ModInitializer {
     public void onInitialize() {
         try {
             SReplayMod.loadConfig();
-            LOGGER.info("SReplay: Loaded config");
+            Lang.load("zh_cn");
+            LOGGER.info("SReplay: Initialzed");
         }
-        catch(IOException | JsonParseException e) {
-            LOGGER.error("Failed to load config: " + e);
+        catch(Throwable e) {
+            LOGGER.error("Exception initializing mod: " + e);
             e.printStackTrace();
             config = new Config();
         }

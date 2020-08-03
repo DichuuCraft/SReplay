@@ -19,7 +19,7 @@ public class Util {
     // Stolen from fabric-carpet
     @FunctionalInterface
     public interface SupplierWithCommandSyntaxException<T> {
-        T get() throws CommandSyntaxException;
+        T get() throws IllegalArgumentException;
     }
 
     @FunctionalInterface
@@ -27,7 +27,7 @@ public class Util {
         T get(T a);
     }
 
-    public static <T> T tryGetArg(SupplierWithCommandSyntaxException<T> a, SupplierWithCommandSyntaxException<T> b) throws CommandSyntaxException {
+    public static <T> T tryGetArg(SupplierWithCommandSyntaxException<T> a, SupplierWithCommandSyntaxException<T> b) {
         try {
             return a.get();
         }

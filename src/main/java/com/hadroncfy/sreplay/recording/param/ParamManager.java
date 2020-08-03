@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.hadroncfy.sreplay.Lang;
 import com.hadroncfy.sreplay.recording.Photographer;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.ArgumentType;
@@ -18,8 +19,11 @@ import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
+import net.minecraft.block.SnowBlock;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.text.LiteralText;
+import net.minecraft.text.Style;
 
 import static net.minecraft.server.command.CommandManager.literal;
 import static net.minecraft.server.command.CommandManager.argument;
@@ -48,6 +52,29 @@ public class ParamManager {
             Executor cmd = new Executor(entry);
             ret.then(literal(name).executes(cmd).then(getArgument(entry).executes(cmd)));
         }
+        return ret;
+    }
+
+    public LiteralArgumentBuilder<ServerCommandSource> buildHelpCommand(){
+        LiteralArgumentBuilder<ServerCommandSource> ret = literal("set")
+            .then(argument("param", StringArgumentType.word())
+                .suggests((src, sb) -> suggestMatching(params.keySet(), sb))
+                .executes(ctx -> {
+                    ServerCommandSource src = ctx.getSource();
+                    String name = StringArgumentType.getString(ctx, "param");
+                    ParamEntry<?> entry = params.get(name);
+                    if (entry != null){
+                        src.sendFeedback(render(getFormats().paramHelp, 
+                            name, 
+                            Lang.getString(entry.desc)
+                        ), false);
+                    }
+                    else {
+                        src.sendError(getFormats().noSuchParam);
+                    }
+                    return 0;
+                }));
+
         return ret;
     }
 

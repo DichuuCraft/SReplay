@@ -7,25 +7,13 @@ Server-side recording mod for [ReplayMod](https://github.com/ReplayMod/ReplayMod
 * Display recorded time, recorded file size, etc. in tab list.
 * Can be set to pause automatically when no players are near by.
 * Allow players to download recording files via an embedded http server.
+* Variable view distance, but not chunk loading distance.
+* Lock day time or weather in recording.
 
 Tested in Minecraft 1.14.4, should also work in later versions with only trivial modifications on the code (minecraft version and yarn mapping version of fabric-loom).
 
 ## Use
-* `/sreplay player <player name> spawn [<recording file name>]` Spawn a recording bot and start recording. This is similiar to a client side player recording session. If no file name specified, file name will be based on current time and date. Player name must satisfies the regular expression`playerNamePattern` in the configuration;
-* `/sreplay player <player name> kill` Kick a recording bot and save recording files (`.mcpr`);
-* `/sreplay player <player name> tp` Teleport a bot to your position;
-* `/sreplay player <player name> respawn [<recording file name>]` Stop the current recording session of the specified bot, save recording file, and start a new recording session on the same bot;
-* `/sreplay player <player name> set sizeLimit <size limit>` Set recording file size limit for the specified bot, in MB. Set to `-1` for unlimited size.
-* `/sreplay player <player name> set timeLimit <time limit>` Set recording time limit for the specified bot, in seconds. Set to `-1` for unlimited time length.
-* `/sreplay player <player name> set autoRestart <auto restart>` Set auto restart flag. When size limit or time limit exceeds a new recording session will be started if this flag is on.
-* `/sreplay player <player name> set autoPause <auto pause>` Set auto pause flag. If this flag is on, recording will be paused while no players near by.
-* `/sreplay player <player name> pause|resume` Pause/resume recording of the designated bot.
-* `/sreplay player <player name> marker <marker name>` Add a marker on the time line.
-* `/sreplay list` List all saved replay file;
-* `/sreplay delete <recording file name>` Delete a recording file. Needs confirming using `/sreplay confirm <code>`;
-* `/sreplay reload` Reload configuration.
-* `/sreplay get <recording file>` Generate a temporary downloading URL for the given recording file. This URL will be invalidated after first request, or a configurable time out is expired.
-* `/sreplay server start|stop` Start/stop the http server for downloading recording file.
+Use `/sreplay help` to get general usage, and `/sreplay help set <parametre name>` to get help with the specified recording parametre.
 
 ## Configuration
 Cnofiguration file is `config/sreplay.json`, it will be created each time start the mod if not exist.
@@ -34,5 +22,10 @@ Cnofiguration file is `config/sreplay.json`, it will be created each time start 
 * `serverName` Server name stored in Replay file;
 * `sizeLimit` Default recording size limit for each recording bot, in MB;
 * `autoReconnect` Default auto restart flag;
-* `playerNamePattern` Pattern that every bot name must match (Hint: change this to `.*` if you want any player name to be valid);
+* `playerNamePattern` Pattern that every bot name must match, attempting to spawn a bot with invalid name would result in an `invalidName` error. (Hint: change this to `.*` if you want any player name to be valid);
 * `formats` Message formats, each format entry is **raw JSON text**. See the configuration file for more detail.
+### Configurations for embeded http server
+* `serverListenAddress` Server listen address. `0.0.0.0` would be fine most of the time.
+* `serverPort` Server port.
+* `serverHostName` Server domain name in the downloading Links.
+* `downloadTimeout` Link expiring time out, in milliseconds.
