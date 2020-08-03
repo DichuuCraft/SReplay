@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 import com.hadroncfy.sreplay.SReplayMod;
 import com.hadroncfy.sreplay.config.TextRenderer;
 import com.hadroncfy.sreplay.mixin.PlayerSpawnS2CPacketAccessor;
+import com.hadroncfy.sreplay.mixin.WorldTimeUpdateS2CPacketAccessor;
 import com.mojang.authlib.GameProfile;
 import com.replaymod.replaystudio.data.Marker;
 import com.replaymod.replaystudio.replay.ReplayFile;
@@ -30,7 +31,9 @@ import net.minecraft.network.NetworkState;
 import net.minecraft.network.Packet;
 import net.minecraft.network.packet.s2c.login.LoginSuccessS2CPacket;
 import net.minecraft.network.packet.s2c.play.DisconnectS2CPacket;
+import net.minecraft.network.packet.s2c.play.GameStateChangeS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerSpawnS2CPacket;
+import net.minecraft.network.packet.s2c.play.WorldTimeUpdateS2CPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.PacketByteBuf;
 
@@ -182,7 +185,7 @@ public class Recorder implements IPacketListener {
     }
 
     private void savePacket(Packet<?> packet) {
-        if (param.sizeLimit != -1 && bytesRecorded > param.sizeLimit || param.timeLimit != -1 && getRecordedTime() > param.timeLimit){
+        if (param.sizeLimit != -1 && bytesRecorded > ((long)param.sizeLimit) << 20 || param.timeLimit != -1 && getRecordedTime() > (long)param.timeLimit * 1000){
             stop();
             if (limiter != null){
                 limiter.onSizeLimitExceeded(bytesRecorded);
@@ -301,6 +304,39 @@ public class Recorder implements IPacketListener {
         }
     }
 
+    private void setWeather(ForcedWeather weather){
+        switch(weather){
+            case RAIN:
+                savePacket(new GameStateChangeS2CPacket(2, 0));
+                savePacket(new GameStateChangeS2CPacket(7, 1));
+                savePacket(new GameStateChangeS2CPacket(8, 0));
+                break;
+            case CLEAR:
+                savePacket(new GameStateChangeS2CPacket(1, 0));
+                savePacket(new GameStateChangeS2CPacket(7, 0));
+                savePacket(new GameStateChangeS2CPacket(8, 0));
+                break;
+            case THUNDER:
+                savePacket(new GameStateChangeS2CPacket(2, 0));
+                savePacket(new GameStateChangeS2CPacket(7, 1));
+                savePacket(new GameStateChangeS2CPacket(8, 1));
+                break;
+            default:
+                break;
+        }
+    }
+
+    public void syncParam(){
+        switch(param.forcedWeather){
+            case RAIN:
+            case CLEAR:
+            case THUNDER:
+                setWeather(param.forcedWeather);
+                break;
+            case NONE:
+        }
+    }
+
     @Override
     public void onPacket(Packet<?> p) {
         if (!stopped){
@@ -310,6 +346,16 @@ public class Recorder implements IPacketListener {
             }
             if (p instanceof DisconnectS2CPacket){
                 return;
+            }
+            if (param.dayTime != -1 && p instanceof WorldTimeUpdateS2CPacket){
+                final WorldTimeUpdateS2CPacketAccessor p2 = (WorldTimeUpdateS2CPacketAccessor)p;
+                p = new WorldTimeUpdateS2CPacket(p2.getTime(), param.dayTime, false);
+            }
+            if (param.forcedWeather != ForcedWeather.NONE && p instanceof GameStateChangeS2CPacket){
+                int r = ((GameStateChangeS2CPacket)p).getReason();
+                if (r == 1 || r == 2 || r == 7 || r == 8){
+                    return;
+                }
             }
             savePacket(p);
         }

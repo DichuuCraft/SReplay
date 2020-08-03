@@ -2,10 +2,8 @@ package com.hadroncfy.sreplay.command;
 
 import com.google.gson.JsonParseException;
 import com.hadroncfy.sreplay.SReplayMod;
-import com.hadroncfy.sreplay.config.TextRenderer;
 import com.hadroncfy.sreplay.recording.Photographer;
 import com.mojang.brigadier.CommandDispatcher;
-import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -44,7 +42,6 @@ public class SReplayCommand {
     private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy_MM_dd_HH_mm_ss");
 
     private final ConfirmationManager cm = new ConfirmationManager(20000, 999);
-    private final Random rand = new Random();
 
     public SReplayCommand(){
     }
@@ -59,7 +56,7 @@ public class SReplayCommand {
                 .then(literal("tp").executes(this::playerTp))
                 .then(literal("name").executes(this::getName)
                     .then(argument("fileName", StringArgumentType.word()).executes(this::setName)))
-                .then(buildPlayerParameterCommand())
+                .then(Photographer.PARAM_MANAGER.buildCommand())
                 .then(literal("pause").executes(this::pause))
                 .then(literal("resume").executes(this::resume))
                 .then(literal("marker").executes(this::getMarkers)
@@ -198,63 +195,6 @@ public class SReplayCommand {
             return 1;
         }
         return 0;
-    }
-
-    private static LiteralArgumentBuilder<ServerCommandSource> buildPlayerParameterCommand(){
-        return literal("set")
-            .then(new RecordParameterExecutor<Integer>("sizeLimit", IntegerArgumentType.integer(-1), int.class) {
-				@Override
-				protected int run(CommandContext<ServerCommandSource> ctx, Photographer p, Integer val) {
-                    if (val == -1){
-                        p.getRecordingParam().sizeLimit = -1;
-                    }
-                    else if (val < 10){
-                        ctx.getSource().sendFeedback(SReplayMod.getFormats().sizeLimitTooSmall, true);
-                        return 1;
-                    }
-                    else {
-                        p.getRecordingParam().sizeLimit = ((long)val) << 20;
-                    }
-					return 0;
-				}
-            }.build())
-            .then(new RecordParameterExecutor<Integer>("timeLimit", IntegerArgumentType.integer(-1), int.class) {
-				@Override
-				protected int run(CommandContext<ServerCommandSource> ctx, Photographer p, Integer val) {
-                    if (val == -1){
-                        p.getRecordingParam().timeLimit = -1;
-                    }
-                    else if (val < 10){
-                        ctx.getSource().sendFeedback(SReplayMod.getFormats().timeLimitTooSmall, true);
-                    }
-                    else {
-                        p.getRecordingParam().timeLimit = val * 1000;
-                    }
-					return 0;
-				}
-                
-            }.build())
-            .then(new RecordParameterExecutor<Boolean>("autoRestart", BoolArgumentType.bool(), boolean.class) {
-				@Override
-				protected int run(CommandContext<ServerCommandSource> ctx, Photographer p, Boolean val) {
-					p.getRecordingParam().autoReconnect = val;
-					return 0;
-				}
-            }.build())
-            .then(new RecordParameterExecutor<Boolean>("autoPause", BoolArgumentType.bool(), boolean.class) {
-				@Override
-				protected int run(CommandContext<ServerCommandSource> ctx, Photographer p, Boolean val) {
-					p.setAutoPause(val);
-					return 0;
-				}
-            }.build())
-            .then(new RecordParameterExecutor<Integer>("watchDistance", IntegerArgumentType.integer(0), int.class){
-                @Override
-                protected int run(CommandContext<ServerCommandSource> context, Photographer p, Integer val) {
-                    p.setWatchDistance(val);
-                    return 0;
-                }                
-            }.build());
     }
 
     static Photographer requirePlayer(CommandContext<ServerCommandSource> ctx){
@@ -427,7 +367,6 @@ public class SReplayCommand {
     }
 
     public int playerRespawn(CommandContext<ServerCommandSource> ctx) throws CommandSyntaxException {
-        final ServerCommandSource src = ctx.getSource();
         final Photographer p = requirePlayer(ctx);
         if (p != null) {
             p.reconnect();

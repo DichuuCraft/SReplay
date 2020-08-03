@@ -1,7 +1,6 @@
 package com.hadroncfy.sreplay.server;
 
 import java.io.File;
-import java.util.Random;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -21,7 +20,6 @@ import io.netty.handler.codec.http.LastHttpContent;
 
 public class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
     private static final Logger LOGGER = LogManager.getLogger();
-    private static final Random random = new Random();
     private final Server server;
     public HttpHandler(Server server){
         this.server = server;

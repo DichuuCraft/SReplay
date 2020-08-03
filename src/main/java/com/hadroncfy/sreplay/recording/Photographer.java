@@ -11,6 +11,7 @@ import com.hadroncfy.sreplay.SReplayMod;
 import com.hadroncfy.sreplay.config.TextRenderer;
 import com.hadroncfy.sreplay.interfaces.IChunkSender;
 import com.hadroncfy.sreplay.mixin.PlayerManagerAccessor;
+import com.hadroncfy.sreplay.recording.param.ParamManager;
 import com.mojang.authlib.GameProfile;
 
 import net.minecraft.entity.Entity;
@@ -44,6 +45,7 @@ import static com.hadroncfy.sreplay.config.TextRenderer.render;
 
 public class Photographer extends ServerPlayerEntity implements ISizeLimitExceededListener {
     public static final String MCPR = ".mcpr";
+    public static final ParamManager PARAM_MANAGER = new ParamManager(RecordingParam.class);
     private static final String RAW_SUBDIR = "raw";
     private static final GameMode MODE = GameMode.SPECTATOR;
     private static final Logger LOGGER = LogManager.getLogger();
@@ -61,11 +63,13 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     private Recorder recorder;
     private final File outputDir;
     private final List<Entity> trackedPlayers = new ArrayList<>();
+    private int currentWatchDistance;
 
     private String recordingFileName, saveFileName;
 
     public Photographer(MinecraftServer server, ServerWorld world, GameProfile profile, ServerPlayerInteractionManager im, File outputDir, RecordingParam param){
         super(server, world, profile, im);
+        currentWatchDistance = server.getPlayerManager().getViewDistance();
         rparam = param;
         this.outputDir = outputDir;
     }
@@ -117,8 +121,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         saveFileName = name;
     }
 
-    public void setWatchDistance(int distance){
-        rparam.setWatchDistance(distance);
+    private void setWatchDistance(int distance){
         recorder.onPacket(new ChunkLoadDistanceS2CPacket(distance));
         int cx = MathHelper.floor(x) >> 4, cz = MathHelper.floor(z) >> 4;
         ServerChunkManager chunkManager = (ServerChunkManager) world.getChunkManager();
@@ -150,11 +153,20 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         removed = false;
         trackedPlayers.clear();
         server.getPlayerManager().onPlayerConnect(connection, this);
-        if (rparam.getWatchDistance() != server.getPlayerManager().getViewDistance()){
-            recorder.onPacket(new ChunkLoadDistanceS2CPacket(rparam.getWatchDistance()));
-        }
+        syncParams();
         interactionManager.setGameMode(MODE);
         getServerWorld().getChunkManager().updateCameraPosition(this);
+    }
+
+    public void syncParams(){
+        if (recorder != null){
+            recorder.syncParam();
+            updatePause();
+            if (currentWatchDistance != rparam.watchDistance){
+                setWatchDistance(rparam.watchDistance);
+                currentWatchDistance = rparam.watchDistance;
+            }
+        }
     }
 
     public void connect(String saveName) throws IOException {
@@ -207,11 +219,6 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         }
     }
 
-    public void setAutoPause(boolean b){
-        rparam.autoPause = b;
-        updatePause();
-    }
-
     private void updatePause(){
         if (recorder != null && rparam.autoPause){
             final String name = getGameProfile().getName();
@@ -257,8 +264,8 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
             size += "/" + String.format("%.2f", rparam.sizeLimit / 1024F / 1024F) + "M";
         }
         Text ret = new LiteralText(getGameProfile().getName()).setStyle(new Style().setItalic(true).setColor(Formatting.AQUA));
-        if (rparam.getWatchDistance() != server.getPlayerManager().getViewDistance()){
-            ret.append(new LiteralText(" (" + rparam.getWatchDistance() + ")").setStyle(new Style().setColor(Formatting.GRAY)));
+        if (rparam.watchDistance != server.getPlayerManager().getViewDistance()){
+            ret.append(new LiteralText(" (" + rparam.watchDistance + ")").setStyle(new Style().setColor(Formatting.GRAY)));
         }
         if (rparam.autoReconnect){
             ret.append(new LiteralText(" [R]").setStyle(new Style().setItalic(false).setColor(Formatting.DARK_PURPLE)));
@@ -411,7 +418,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
 
     public static int getRealViewDistance(ServerPlayerEntity player, int watchDistance){
         if (player instanceof Photographer){
-            return ((Photographer)player).getRecordingParam().getWatchDistance();
+            return ((Photographer)player).currentWatchDistance;
         }
         else {
             return watchDistance;

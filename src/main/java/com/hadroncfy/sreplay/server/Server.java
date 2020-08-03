@@ -5,7 +5,6 @@ import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Random;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
@@ -30,7 +29,6 @@ import io.netty.handler.stream.ChunkedWriteHandler;
 import net.minecraft.util.Lazy;
 
 public class Server {
-    private static final Logger LOGGER = LogManager.getLogger();
     // Stolen from ServerNetworkIo
     public static final Lazy<NioEventLoopGroup> DEFAULT_CHANNEL = new Lazy<>(() -> {
         return new NioEventLoopGroup(0, (new ThreadFactoryBuilder()).setNameFormat("Netty Server IO #%d").setDaemon(true).build());

@@ -12,6 +12,13 @@ public class Formats {
     private static Text red(String s){
         return new LiteralText(s).setStyle(new Style().setColor(Formatting.RED));
     }
+    private static Text green(String s){
+        return new LiteralText(s).setStyle(new Style().setColor(Formatting.GREEN));
+    }
+    private static Text white(String s){
+        return new LiteralText(s).setStyle(new Style().setColor(Formatting.WHITE));
+    }
+
     public Text playerNotFound = red("[SReplay] 玩家$1未找到（或不是录像机器人）"), 
     recordFileExists = red("[SReplay] 录像文件$1已存在"),
     reloadedConfig = new LiteralText("[SReplay] 已加载配置"),
@@ -89,7 +96,7 @@ public class Formats {
     serverStopped = new LiteralText("[SReplay] 下载服务器已停止"),
     serverStopFailed = new LiteralText("[SReplay] 下载服务器停止失败：$1"),
     downloadUrl = new LiteralText("[SReplay] 下载链接：")
-        .append(new LiteralText("$1").setStyle(new Style().setBold(true).setUnderline(true)
+        .append(new LiteralText("$1").setStyle(new Style().setUnderline(true)
             .setClickEvent(new ClickEvent(Action.OPEN_URL, "$1"))
             .setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, 
                 new LiteralText("点击以下载").setStyle(new Style().setColor(Formatting.GRAY).setItalic(true))
@@ -101,5 +108,20 @@ public class Formats {
         .append(new LiteralText("的"))
         .append(new LiteralText("$3").setStyle(new Style().setColor(Formatting.GREEN)))
         .append(new LiteralText("值设置为"))
-        .append(new LiteralText("$4").setStyle(new Style().setColor(Formatting.GREEN)));
+        .append(new LiteralText("$4").setStyle(new Style().setColor(Formatting.GREEN))),
+    getParam = new LiteralText("[SReplay]").append(
+        new LiteralText("$1").setStyle(new Style().setColor(Formatting.GREEN))
+    ).append(new LiteralText("的")).append(
+        new LiteralText("$2").setStyle(new Style().setColor(Formatting.GREEN))
+    ).append(new LiteralText("值为")).append(
+        new LiteralText("$3").setStyle(new Style().setColor(Formatting.GREEN))
+    ),
+    positiveParam = red("[SReplay] 此参数须为正整数"),
+    nonNegativeOrMinusOne = red("[SReplay] 此参数须为-1或非负数"),
+    invalidEnum = red("[SReplay] 无效的值");
+
+    public Text[] help = new Text[]{
+        new LiteralText("====== SReplay 用法 ======").setStyle(new Style().setColor(Formatting.YELLOW)),
+        green("/sreplay ")
+    };
 }

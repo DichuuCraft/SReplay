@@ -1,21 +1,117 @@
 package com.hadroncfy.sreplay.recording.param;
 
-import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
+import com.hadroncfy.sreplay.recording.Photographer;
+import com.mojang.brigadier.Command;
+import com.mojang.brigadier.arguments.ArgumentType;
+import com.mojang.brigadier.arguments.BoolArgumentType;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.ArgumentBuilder;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.builder.RequiredArgumentBuilder;
+import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
+
+import static net.minecraft.server.command.CommandManager.literal;
+import static net.minecraft.server.command.CommandManager.argument;
+import static net.minecraft.server.command.CommandSource.suggestMatching;
+
+import static com.hadroncfy.sreplay.SReplayMod.getFormats;
+
+import static com.hadroncfy.sreplay.config.TextRenderer.render;
 
 public class ParamManager {
     private final Class<?> paramClass;
-    private final Object param;
+    private final Map<String, ParamEntry<?>> params = new HashMap<>();
 
-    public ParamManager(Object param){
-        this.param = param;
-        paramClass = param.getClass();
+    public ParamManager(Class<?> paramClass) {
+        this.paramClass = paramClass;
+        for (Field f : paramClass.getDeclaredFields()) {
+            ParamEntry<?> entry = new ParamEntry<>(f);
+            params.put(entry.name, entry);
+        }
     }
 
-    LiteralArgumentBuilder<ServerCommandSource> buildCommand(){
-        LiteralArgumentBuilder<ServerCommandSource> ret = null;
-        
+    public LiteralArgumentBuilder<ServerCommandSource> buildCommand() {
+        LiteralArgumentBuilder<ServerCommandSource> ret = literal("set");
+        for (ParamEntry<?> entry : params.values()) {
+            String name = entry.name;
+            Executor cmd = new Executor(entry);
+            ret.then(literal(name).executes(cmd).then(getArgument(entry).executes(cmd)));
+        }
         return ret;
+    }
+
+    private static RequiredArgumentBuilder<ServerCommandSource, ?> getArgument(ParamEntry<?> entry){
+        Class<?> type = entry.type;
+        String name = entry.name;
+        if (type.equals(boolean.class)) {
+            return argument(name, BoolArgumentType.bool());
+        } else if (type.equals(int.class)) {
+            return argument(name, IntegerArgumentType.integer());
+        } else if (type.isEnum()){
+            List<String> names = new ArrayList<>();
+            for (Object k: type.getEnumConstants()){
+                names.add(((Enum)k).name().toLowerCase());
+            }
+            return argument(name, StringArgumentType.word()).suggests((c, b) -> suggestMatching(names, b));
+        }
+        return argument(name, StringArgumentType.word());
+    }
+
+    private class Executor implements Command<ServerCommandSource> {
+        private final ParamEntry<?> entry;
+
+        Executor(ParamEntry<?> entry) {
+            this.entry = entry;
+        }
+
+        @Override
+        public int run(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+            ServerCommandSource src = context.getSource();
+            MinecraftServer server = src.getMinecraftServer();
+            String pname = StringArgumentType.getString(context, "player");
+            Photographer player = Photographer.getFake(server, pname);
+            if (player != null) {
+                try {
+                    try {
+                        if(entry.set(context, player.getRecordingParam())) {
+                            player.syncParams();
+                            server.getPlayerManager().broadcastChatMessage(render(getFormats().setParam,
+                                src.getName(),
+                                player.getGameProfile().getName(),
+                                entry.name,
+                                entry.field.get(player.getRecordingParam()).toString()
+                            ), true);
+                        }
+                    }
+                    catch(InvalidEnumException e){
+                        src.sendError(getFormats().invalidEnum);
+                    }
+                    catch(IllegalArgumentException e){
+                        src.sendFeedback(render(getFormats().getParam,
+                            player.getGameProfile().getName(),
+                            entry.name,
+                            entry.field.get(player.getRecordingParam()).toString()
+                        ), false);
+                    }
+                } catch(IllegalAccessException e){
+                    e.printStackTrace();
+                }
+            }
+            else {
+                src.sendError(getFormats().playerNotFound);
+            }
+            return 0;
+        }
     }
 }

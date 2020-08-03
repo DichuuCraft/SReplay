@@ -10,7 +10,8 @@
     "PlayerManagerAccessor",
     "MixinThreadedAnvilChunkStorage",
     "ThreadedAnvilChunkStorageAccessor",
-    "MixinEntityTracker"
+    "MixinEntityTracker",
+    "WorldTimeUpdateS2CPacketAccessor"
   ],
   "client": [
     "MixinIntegratedServer"

@@ -1,13 +1,37 @@
 package com.hadroncfy.sreplay.recording;
 
+import com.github.steveice10.netty.util.internal.shaded.org.jctools.queues.MessagePassingQueue.Consumer;
 import com.hadroncfy.sreplay.config.Config;
+import com.hadroncfy.sreplay.recording.param.Param;
+import com.hadroncfy.sreplay.recording.param.Validator;
+
+import static com.hadroncfy.sreplay.SReplayMod.getFormats;
+
+import net.minecraft.text.Text;
 
 public class RecordingParam {
-    public long sizeLimit = -1, timeLimit = -1;
-    public boolean autoReconnect = true, autoPause = false;
-    private int watchDistance;
+    @Param(validators = SizeLimitValidator.class)
+    public int sizeLimit = -1;
 
-    public static RecordingParam createDefaultRecordingParam(Config config, int watchDistance){
+    @Param(validators = TimeLimitValidator.class)
+    public int timeLimit = -1;
+
+    @Param
+    public boolean autoReconnect = true;
+    
+    @Param
+    public boolean autoPause = false;
+
+    @Param(validators = PositiveValidator.class)
+    public int watchDistance;
+
+    @Param(validators = NonNegativeOrMinus1.class)
+    public int dayTime = -1;
+
+    @Param
+    public ForcedWeather forcedWeather = ForcedWeather.NONE;
+
+    public static RecordingParam createDefaultRecordingParam(Config config, int watchDistance) {
         RecordingParam p = new RecordingParam();
         p.autoReconnect = config.autoReconnect;
         p.sizeLimit = config.sizeLimit;
@@ -16,11 +40,57 @@ public class RecordingParam {
         return p;
     }
 
-    public int getWatchDistance(){
-        return watchDistance;
+    private static class SizeLimitValidator implements Validator<Integer> {
+        @Override
+        public boolean validate(Integer val, Consumer<Text> errorReceiver) {
+            if (val != -1 && val < 10){
+                errorReceiver.accept(getFormats().sizeLimitTooSmall);
+                return false;
+            }
+            return true;
+        }
     }
 
-    void setWatchDistance(int distance){
-        watchDistance = distance;
+    private static class TimeLimitValidator implements Validator<Integer> {
+        @Override
+        public boolean validate(Integer val, Consumer<Text> errorReceiver) {
+            if (val != -1 && val < 10){
+                errorReceiver.accept(getFormats().timeLimitTooSmall);
+                return false;
+            }
+            return true;
+        }
+    }
+
+    private static class PositiveValidator implements Validator<Integer> {
+        @Override
+        public boolean validate(Integer val, Consumer<Text> errorReceiver) {
+            if (val <= 0){
+                errorReceiver.accept(getFormats().positiveParam);
+                return false;
+            }
+            return true;
+        }
+    }
+
+    private static class NonNegativeOrMinus1 implements Validator<Integer> {
+        @Override
+        public boolean validate(Integer val, Consumer<Text> errorReceiver) {
+            if (val != -1 && val < 0){
+                errorReceiver.accept(getFormats().positiveParam);
+                return false;
+            }
+            return true;
+        }
+    }
+
+    private static class RecordingFileNameValidator implements Validator<String> {
+
+        @Override
+        public boolean validate(String val, Consumer<Text> errorReceiver) {
+            
+            return false;
+        }
+        
     }
 }

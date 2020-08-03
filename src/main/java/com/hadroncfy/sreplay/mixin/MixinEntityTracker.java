@@ -12,8 +12,6 @@ import net.minecraft.server.world.ThreadedAnvilChunkStorage;
 
 import static com.hadroncfy.sreplay.recording.Photographer.getRealViewDistance;
 
-import com.hadroncfy.sreplay.recording.Photographer;
-
 @Mixin(targets = { "net.minecraft.server.world.ThreadedAnvilChunkStorage$EntityTracker" })
 public class MixinEntityTracker {
     @Shadow @Final
@@ -21,15 +19,9 @@ public class MixinEntityTracker {
 
     @Redirect(method = "updateCameraPosition(Lnet/minecraft/server/network/ServerPlayerEntity;)V", at = @At(
         value = "INVOKE",
-        // XXX: AAAAAAhhhhhh!!! Why cannot I redirect ThreadedAnvilChunkStorage.watchDistance????!!!!!
-        target = "Ljava/lang/Math;min(II)I"
+        target = "Lnet/minecraft/server/world/ThreadedAnvilChunkStorage;method_18725(Lnet/minecraft/server/world/ThreadedAnvilChunkStorage;)I"
     ))
-    private int getViewDistance(int a, int b, ServerPlayerEntity player){
-        if (entity instanceof Photographer){
-            return Math.min(a, (((Photographer)entity).getRecordingParam().getWatchDistance() - 1) * 16);
-        }
-        else {
-            return Math.min(a, b);
-        }
+    private int getViewDistance(ThreadedAnvilChunkStorage cela, ServerPlayerEntity player){
+        return getRealViewDistance(player, ((ThreadedAnvilChunkStorageAccessor)cela).getWatchDistance());
     }
 }
