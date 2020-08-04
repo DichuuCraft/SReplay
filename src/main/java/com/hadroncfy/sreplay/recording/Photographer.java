@@ -188,7 +188,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         if (now - lastTablistUpdateTime >= 1000){
             lastTablistUpdateTime = now;
             if (!recorder.isSoftPaused()){
-                server.getPlayerManager().sendToAll(new PlayerListS2CPacket(Action.UPDATE_DISPLAY_NAME, Photographer.this));
+                server.getPlayerManager().sendToAll(new PlayerListS2CPacket(Action.UPDATE_DISPLAY_NAME, this));
             }
         }
     }
@@ -256,12 +256,12 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
 
         String time = timeToString(duration);
         if (rparam.timeLimit != -1){
-            time += "/" + timeToString(rparam.timeLimit / 1000);
+            time += "/" + timeToString(rparam.timeLimit);
         }
 
         String size = String.format("%.2f", recorder.getRecordedBytes() / 1024F / 1024F) + "M";
         if (rparam.sizeLimit != -1){
-            size += "/" + String.format("%.2f", rparam.sizeLimit / 1024F / 1024F) + "M";
+            size += "/" + rparam.sizeLimit + "M";
         }
         Text ret = new LiteralText(getGameProfile().getName()).setStyle(new Style().setItalic(true).setColor(Formatting.AQUA));
         if (rparam.watchDistance != server.getPlayerManager().getViewDistance()){

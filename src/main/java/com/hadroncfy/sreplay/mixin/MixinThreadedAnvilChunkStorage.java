@@ -4,7 +4,6 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import com.hadroncfy.sreplay.interfaces.IChunkSender;
-import com.hadroncfy.sreplay.recording.Photographer;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

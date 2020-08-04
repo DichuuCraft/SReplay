@@ -3,6 +3,7 @@ package com.hadroncfy.sreplay;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -13,9 +14,10 @@ public class Lang {
     private static String selectedLang = "";
     private static final Gson GSON = new Gson();
 
+    @SuppressWarnings({"unchecked"})
     public static void load(String lang) throws IOException {
         if (!selectedLang.equals(lang)){
-            try(Reader reader = new InputStreamReader(Lang.class.getClassLoader().getResourceAsStream(String.format("lang/%s.json", lang)))){
+            try(Reader reader = new InputStreamReader(Lang.class.getClassLoader().getResourceAsStream(String.format("lang/%s.json", lang)), StandardCharsets.UTF_8)){
                 language = GSON.fromJson(reader, HashMap.class);
                 selectedLang = lang;
             }

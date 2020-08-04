@@ -11,7 +11,6 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
-import com.replaymod.replaystudio.data.Marker;
 
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
@@ -133,10 +132,6 @@ public class SReplayCommand {
         }
 
         src.sendFeedback(render(getFormats().paginationFooter, page + 1, (int)Math.ceil(p.size() / (float)s)), false);
-    }
-
-    private static int helpSet(CommandContext<ServerCommandSource> ctx){
-        return 0;
     }
 
     private static int getMarkers(CommandContext<ServerCommandSource> ctx){

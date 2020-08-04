@@ -90,6 +90,9 @@ public class SReplayMod implements ModInitializer {
         catch(Throwable e) {
             LOGGER.error("Exception initializing mod: " + e);
             e.printStackTrace();
+        }
+
+        if (config == null){
             config = new Config();
         }
 

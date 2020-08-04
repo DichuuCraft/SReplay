@@ -9,21 +9,16 @@ import java.util.Map;
 import com.hadroncfy.sreplay.Lang;
 import com.hadroncfy.sreplay.recording.Photographer;
 import com.mojang.brigadier.Command;
-import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
-import com.mojang.brigadier.builder.ArgumentBuilder;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
-import net.minecraft.block.SnowBlock;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.text.LiteralText;
-import net.minecraft.text.Style;
 
 import static net.minecraft.server.command.CommandManager.literal;
 import static net.minecraft.server.command.CommandManager.argument;
@@ -78,6 +73,7 @@ public class ParamManager {
         return ret;
     }
 
+    @SuppressWarnings({"rawtypes"})
     private static RequiredArgumentBuilder<ServerCommandSource, ?> getArgument(ParamEntry<?> entry){
         Class<?> type = entry.type;
         String name = entry.name;

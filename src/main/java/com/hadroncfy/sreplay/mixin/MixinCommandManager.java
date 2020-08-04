@@ -1,6 +1,5 @@
 package com.hadroncfy.sreplay.mixin;
 
-import com.hadroncfy.sreplay.SReplayMod;
 import com.hadroncfy.sreplay.command.SReplayCommand;
 import com.mojang.brigadier.CommandDispatcher;
 

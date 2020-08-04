@@ -1,7 +1,5 @@
 package com.hadroncfy.sreplay.recording;
 
-import java.util.concurrent.CompletableFuture;
-
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import net.minecraft.network.ClientConnection;

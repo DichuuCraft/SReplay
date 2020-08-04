@@ -89,7 +89,7 @@ public class RecordingParam {
         @Override
         public boolean validate(Integer val, Consumer<Text> errorReceiver) {
             if (val != -1 && val < 0){
-                errorReceiver.accept(getFormats().positiveParam);
+                errorReceiver.accept(getFormats().nonNegativeOrMinusOne);
                 return false;
             }
             return true;
