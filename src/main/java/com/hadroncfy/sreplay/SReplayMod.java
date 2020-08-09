@@ -18,6 +18,7 @@ import java.util.Collections;
 import java.util.List;
 
 import com.google.gson.JsonParseException;
+import com.hadroncfy.sreplay.asm.MultipleOrdinalFieldInjectionPoint;
 import com.hadroncfy.sreplay.command.SReplayCommand;
 import com.hadroncfy.sreplay.config.Config;
 import com.hadroncfy.sreplay.config.Formats;
@@ -26,6 +27,7 @@ import com.hadroncfy.sreplay.server.Server;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.spongepowered.asm.mixin.injection.InjectionPoint;
 
 public class SReplayMod implements ModInitializer {
 
@@ -35,15 +37,15 @@ public class SReplayMod implements ModInitializer {
 
     public static final SReplayCommand SREPLAY_COMMAND = new SReplayCommand();
 
-    public static Photographer getFake(MinecraftServer server, String name){
+    public static Photographer getFake(MinecraftServer server, String name) {
         ServerPlayerEntity player = server.getPlayerManager().getPlayer(name);
-        if (player != null && player instanceof Photographer){
+        if (player != null && player instanceof Photographer) {
             return (Photographer) player;
         }
         return null;
     }
 
-    public static Server getServer(){
+    public static Server getServer() {
         return downloadServer;
     }
 
@@ -55,49 +57,56 @@ public class SReplayMod implements ModInitializer {
 
     public static void loadConfig() throws IOException, JsonParseException {
         File dir = new File("config");
-        if (!dir.exists()){
+        if (!dir.exists()) {
             dir.mkdirs();
         }
         File file = new File(dir, "sreplay.json");
-        if (file.exists()){
-            try (Reader reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8)){
+        if (file.exists()) {
+            try (Reader reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8)) {
                 config = Config.GSON.fromJson(reader, Config.class);
             }
-        }
-        else {
+        } else {
             config = new Config();
         }
-        try (Writer writer = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)){
+        try (Writer writer = new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8)) {
             writer.write(Config.GSON.toJson(config));
         }
     }
 
-    public static Config getConfig(){
+    public static Config getConfig() {
         return config;
     }
 
-    public static Formats getFormats(){
+    public static Formats getFormats() {
         return config.formats;
     }
 
     @Override
     public void onInitialize() {
+        InjectionPoint.register(MultipleOrdinalFieldInjectionPoint.class);
+
         try {
             SReplayMod.loadConfig();
             Lang.load("zh_cn");
             LOGGER.info("SReplay: Initialzed");
-        }
-        catch(Throwable e) {
+        } catch (Throwable e) {
             LOGGER.error("Exception initializing mod: " + e);
             e.printStackTrace();
         }
 
-        if (config == null){
+        if (config == null) {
             config = new Config();
         }
 
-        if (!config.savePath.exists()){
+        if (!config.savePath.exists()) {
             config.savePath.mkdirs();
+        }
+
+        try {
+            LOGGER.info("!!!! test: {}",
+                    Class.forName("com.hadroncfy.sreplay.asm.MultipleOrdinalFieldInjectionPoint").getName());
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
         }
     }
     

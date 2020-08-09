@@ -122,17 +122,14 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     }
 
     private void setWatchDistance(int distance){
+        ServerChunkManager chunkManager = getServerWorld().getChunkManager();
         recorder.onPacket(new ChunkLoadDistanceS2CPacket(distance));
-        int cx = MathHelper.floor(x) >> 4, cz = MathHelper.floor(z) >> 4;
-        ServerChunkManager chunkManager = (ServerChunkManager) world.getChunkManager();
-        for (int i = -distance; i <= distance; i++){
-            for (int j = -distance; j <= distance; j++){
-                WorldChunk chunk = chunkManager.method_21730(cx + i, cz + j);
-                if (chunk != null){
-                    ((IChunkSender)chunkManager.threadedAnvilChunkStorage).sendChunk(this, chunk);
-                }
-            }
-        }
+        chunkManager.updateCameraPosition(this);
+        currentWatchDistance = rparam.watchDistance;
+    }
+
+    public int getCurrentWatchDistance(){
+        return currentWatchDistance;
     }
 
     private void connect() throws IOException{
@@ -164,7 +161,6 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
             updatePause();
             if (currentWatchDistance != rparam.watchDistance){
                 setWatchDistance(rparam.watchDistance);
-                currentWatchDistance = rparam.watchDistance;
             }
         }
     }
@@ -264,15 +260,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
             size += "/" + rparam.sizeLimit + "M";
         }
         Text ret = new LiteralText(getGameProfile().getName()).setStyle(new Style().setItalic(true).setColor(Formatting.AQUA));
-        if (rparam.watchDistance != server.getPlayerManager().getViewDistance()){
-            ret.append(new LiteralText(" (" + rparam.watchDistance + ")").setStyle(new Style().setColor(Formatting.GRAY)));
-        }
-        if (rparam.autoReconnect){
-            ret.append(new LiteralText(" [R]").setStyle(new Style().setItalic(false).setColor(Formatting.DARK_PURPLE)));
-        }
-        if (rparam.autoPause){
-            ret.append(new LiteralText("[P]").setStyle(new Style().setItalic(false).setColor(Formatting.GOLD)));
-        }
+
         ret.append(new LiteralText(" " + time).setStyle(new Style().setItalic(false).setColor(Formatting.GREEN)))
             .append(new LiteralText(" " + size).setStyle(new Style().setItalic(false).setColor(Formatting.GREEN)));
         return ret;
