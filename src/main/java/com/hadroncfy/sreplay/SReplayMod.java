@@ -17,9 +17,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import com.google.gson.JsonParseException;
-import com.hadroncfy.sreplay.asm.MultipleOrdinalFieldInjectionPoint;
-import com.hadroncfy.sreplay.command.SReplayCommand;
 import com.hadroncfy.sreplay.config.Config;
 import com.hadroncfy.sreplay.config.Formats;
 import com.hadroncfy.sreplay.recording.Photographer;
@@ -27,7 +24,6 @@ import com.hadroncfy.sreplay.server.Server;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.spongepowered.asm.mixin.injection.InjectionPoint;
 
 public class SReplayMod implements ModInitializer {
 
@@ -35,11 +31,9 @@ public class SReplayMod implements ModInitializer {
     private static Config config;
     private static final Server downloadServer = new Server();
 
-    public static final SReplayCommand SREPLAY_COMMAND = new SReplayCommand();
-
     public static Photographer getFake(MinecraftServer server, String name) {
         ServerPlayerEntity player = server.getPlayerManager().getPlayer(name);
-        if (player != null && player instanceof Photographer) {
+        if (player instanceof Photographer) {
             return (Photographer) player;
         }
         return null;
@@ -55,7 +49,7 @@ public class SReplayMod implements ModInitializer {
         return files;
     }
 
-    public static void loadConfig() throws IOException, JsonParseException {
+    public static void loadConfig() throws IOException {
         File dir = new File("config");
         if (!dir.exists()) {
             dir.mkdirs();
@@ -83,14 +77,13 @@ public class SReplayMod implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        InjectionPoint.register(MultipleOrdinalFieldInjectionPoint.class);
 
         try {
             SReplayMod.loadConfig();
             Lang.load("zh_cn");
             LOGGER.info("SReplay: Initialzed");
-        } catch (Throwable e) {
-            LOGGER.error("Exception initializing mod: " + e);
+        } catch (Exception e) {
+            LOGGER.error("Exception initializing mod: {}", e);
             e.printStackTrace();
         }
 
@@ -100,13 +93,6 @@ public class SReplayMod implements ModInitializer {
 
         if (!config.savePath.exists()) {
             config.savePath.mkdirs();
-        }
-
-        try {
-            LOGGER.info("!!!! test: {}",
-                    Class.forName("com.hadroncfy.sreplay.asm.MultipleOrdinalFieldInjectionPoint").getName());
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
         }
     }
     

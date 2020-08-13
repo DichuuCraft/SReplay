@@ -1,11 +1,11 @@
 package com.hadroncfy.sreplay.mixin;
 
-
 import com.hadroncfy.sreplay.recording.Photographer;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.InjectionPoint;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 import net.minecraft.network.Packet;
@@ -14,6 +14,8 @@ import net.minecraft.server.world.ThreadedAnvilChunkStorage;
 import net.minecraft.util.math.ChunkPos;
 
 import static com.hadroncfy.sreplay.recording.Photographer.getRealViewDistance;
+
+import com.hadroncfy.sreplay.asm.MultipleOrdinalFieldInjectionPoint;
 
 @Mixin(ThreadedAnvilChunkStorage.class)
 public abstract class MixinThreadedAnvilChunkStorage {
