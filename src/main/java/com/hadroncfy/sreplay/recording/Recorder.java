@@ -159,7 +159,9 @@ public class Recorder implements IPacketListener {
     public void pauseRecording(){
         gPaused = true;
         paused = true;
-        addMarker(MARKER_PAUSE);
+        if (param.pauseMarkers){
+            addMarker(MARKER_PAUSE);
+        }
     }
 
     public boolean isRecordingPaused(){
@@ -205,12 +207,12 @@ public class Recorder implements IPacketListener {
                     packetSaveStream.write(pb);
                     bytesRecorded += pb.length + 8;
                 } catch (IOException e) {
-                    LOGGER.error("Error saving packet: " + e);
+                    LOGGER.error("Error saving packet", e);
                     e.printStackTrace();
                 }
             });
         } catch (Exception e) {
-            LOGGER.error("Error saving packet: " + e);
+            LOGGER.error("Error saving packet", e);
             e.printStackTrace();
         }
     }
@@ -255,7 +257,7 @@ public class Recorder implements IPacketListener {
     }
 
     private void saveMarkers(){
-        if (markers.size() > 0){
+        if (!markers.isEmpty()){
             saveService.submit(() -> {
                 Set<Marker> m = new HashSet<>();
                 m.addAll(markers);

@@ -9,5 +9,6 @@
     "sreplay.param.autoReconnect.desc": "自动续录开关，如果为true就会在自动停止录制后自动开始新一轮的录制。",
     "sreplay.param.watchDistance.desc": "录像视距，单位为区块。增大该值不会增大录像假人的区块加载范围，因此还需要用假人加载区块。",
     "sreplay.param.dayTime.desc": "锁定录像的世界时间为该参数值，-1代表不锁定。锁定时间后可停止昼夜循环，在渲染长时间录像时能提高渲染的效果",
-    "sreplay.param.forcedWeather.desc": "锁定录像中的天气。"
+    "sreplay.param.forcedWeather.desc": "锁定录像中的天气。",
+    "sreplay.param.pauseMarkers.desc": "在时间轴上自动暂停的位置添加标记"
 }

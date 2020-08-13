@@ -83,7 +83,7 @@ public class SReplayMod implements ModInitializer {
             Lang.load("zh_cn");
             LOGGER.info("SReplay: Initialzed");
         } catch (Exception e) {
-            LOGGER.error("Exception initializing mod: {}", e);
+            LOGGER.error("Exception initializing mod", e);
             e.printStackTrace();
         }
 

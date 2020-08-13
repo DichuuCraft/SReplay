@@ -9,7 +9,6 @@ import java.util.concurrent.CompletableFuture;
 
 import com.hadroncfy.sreplay.SReplayMod;
 import com.hadroncfy.sreplay.config.TextRenderer;
-import com.hadroncfy.sreplay.interfaces.IChunkSender;
 import com.hadroncfy.sreplay.mixin.PlayerManagerAccessor;
 import com.hadroncfy.sreplay.recording.param.ParamManager;
 import com.mojang.authlib.GameProfile;
@@ -216,11 +215,11 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     private void updatePause(){
         if (recorder != null && rparam.autoPause){
             final String name = getGameProfile().getName();
-            if (trackedPlayers.size() == 0 && !recorder.isRecordingPaused()){
+            if (trackedPlayers.isEmpty() && !recorder.isRecordingPaused()){
                 recorder.pauseRecording();
                 server.getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().autoPaused, name), true);
             }
-            if (trackedPlayers.size() > 0 && recorder.isRecordingPaused()){
+            if (!trackedPlayers.isEmpty() && recorder.isRecordingPaused()){
                 recorder.resumeRecording();
                 server.getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().autoResumed, name), true);
             }
@@ -282,6 +281,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         return recorder;
     }
 
+    @Override
     public void kill(){
         kill(null, true);
     }
@@ -368,7 +368,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
 
     public static void killAllFakes(MinecraftServer server, boolean async) {
         // LOGGER.info("Killing all fakes");
-        listFakes(server).forEach(p -> LOGGER.info("Fake: " + p.getGameProfile().getName()));
+        listFakes(server).forEach(p -> LOGGER.info("Fake: {}", p.getGameProfile().getName()));
         listFakes(server).forEach(p -> p.kill(null, async));
     }
 

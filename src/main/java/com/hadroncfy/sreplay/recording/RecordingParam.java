@@ -43,6 +43,9 @@ public class RecordingParam {
     @Param(desc = "sreplay.param.forcedWeather.desc")
     public ForcedWeather forcedWeather = ForcedWeather.NONE;
 
+    @Param(desc = "sreplay.param.pauseMarkers.desc")
+    public boolean pauseMarkers = false;
+
     public static RecordingParam createDefaultRecordingParam(Config config, int watchDistance) {
         RecordingParam p = new RecordingParam();
         p.autoReconnect = config.autoReconnect;
