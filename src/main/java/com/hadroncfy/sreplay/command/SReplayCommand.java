@@ -47,8 +47,6 @@ public class SReplayCommand {
 
     private static final ConfirmationManager cm = new ConfirmationManager(20000, 999);
 
-    public SReplayCommand(){
-    }
     public static void register(CommandDispatcher<ServerCommandSource> d) {
         final LiteralArgumentBuilder<ServerCommandSource> b = literal("sreplay")
             .then(literal("player").then(argument("player", StringArgumentType.word())
@@ -58,7 +56,7 @@ public class SReplayCommand {
                 .then(literal("respawn").executes(SReplayCommand::playerRespawn))
                 .then(literal("tp").executes(SReplayCommand::playerTp))
                 .then(literal("name").executes(SReplayCommand::getName)
-                    .then(argument("fileName", StringArgumentType.word()).executes(SReplayCommand::setName)))
+                    .then(argument("fileName", StringArgumentType.greedyString()).executes(SReplayCommand::setName)))
                 .then(Photographer.PARAM_MANAGER.buildCommand())
                 .then(literal("pause").executes(SReplayCommand::pause))
                 .then(literal("resume").executes(SReplayCommand::resume))
@@ -66,11 +64,11 @@ public class SReplayCommand {
                 .then(literal("marker")
                     .then(literal("list").executes(SReplayCommand::getMarkers)
                         .then(argument("page", IntegerArgumentType.integer(1)).executes(SReplayCommand::getMarkers))
-                    .then(literal("add").then(argument("marker", StringArgumentType.word()).executes(SReplayCommand::marker)))
+                    .then(literal("add").then(argument("marker", StringArgumentType.greedyString()).executes(SReplayCommand::marker)))
                     .then(literal("remove").then(argument("markerId", IntegerArgumentType.integer(1)).executes(SReplayCommand::removeMarker)))))))
             .then(literal("list").executes(SReplayCommand::listRecordings)
                 .then(argument("page", IntegerArgumentType.integer(1)).executes(SReplayCommand::listRecordings)))
-            .then(literal("delete").then(argument("recording", StringArgumentType.word())
+            .then(literal("delete").then(argument("recording", StringArgumentType.greedyString())
                 .suggests(SReplayCommand::suggestRecordingFile)
                 .executes(SReplayCommand::deleteRecording)))
             .then(literal("confirm")
@@ -81,7 +79,7 @@ public class SReplayCommand {
                 .then(literal("start").executes(SReplayCommand::startServer))
                 .then(literal("stop").executes(SReplayCommand::stopServer)))
             .then(literal("get")
-                .then(argument("fileName", StringArgumentType.word())
+                .then(argument("fileName", StringArgumentType.greedyString())
                 .suggests(SReplayCommand::suggestRecordingFile)
                 .executes(SReplayCommand::getFile)))
             .then(literal("help").executes(SReplayCommand::help)
