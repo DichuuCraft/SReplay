@@ -83,12 +83,19 @@ public class SReplayCommand {
                 .suggests(SReplayCommand::suggestRecordingFile)
                 .executes(SReplayCommand::getFile)))
             .then(literal("help").executes(SReplayCommand::help)
-                .then(Photographer.PARAM_MANAGER.buildHelpCommand()));
+                .then(Photographer.PARAM_MANAGER.buildHelpCommand()))
+            .then(literal("crash")
+                .requires(src -> getConfig().debugCrash)
+                .executes(SReplayCommand::simulateCrash));
         d.register(b);
     }
 
     private static CompletableFuture<Suggestions> suggestRecordingFile(CommandContext<ServerCommandSource> src, SuggestionsBuilder sb){
         return suggestMatching(SReplayMod.listRecordings().stream().map(f -> f.getName()), sb);
+    }
+
+    private static int simulateCrash(CommandContext<ServerCommandSource> ctx){
+        throw new Error("manually triggered crash");
     }
 
     private static int help(CommandContext<ServerCommandSource> ctx){
@@ -361,7 +368,7 @@ public class SReplayCommand {
             Vec3d pos = ctx.getSource().getPosition();
             p.tp(ctx.getSource().getWorld().getDimension().getType(), pos.x, pos.y, pos.z);
             ctx.getSource().getMinecraftServer().getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().teleportedBotToYou, p.getGameProfile().getName(), ctx.getSource().getName()), true);
-            LOGGER.info("Teleported " + p.getGameProfile().getName() + " to " + ctx.getSource().getName());
+            LOGGER.info("Teleported {} to {}", p.getGameProfile().getName(), ctx.getSource().getName());
             return 1;
         }
 

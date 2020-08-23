@@ -44,7 +44,7 @@ public class ParamEntry<T> {
     private boolean setVal(ServerCommandSource src, Object param, T val)
             throws IllegalArgumentException, IllegalAccessException {
         for (Validator<T> v : validators) {
-            if (!v.validate(val, e -> src.sendError(e))) {
+            if (!v.validate(val, src::sendError)) {
                 return false;
             }
         }
@@ -58,11 +58,12 @@ public class ParamEntry<T> {
         ServerCommandSource src = ctx.getSource();
         T val;
         if (!type.isEnum()){
-            val = (T)(Object)ctx.getArgument(name, type);
+            val = ctx.getArgument(name, type);
         }
         else {
+            String valName = StringArgumentType.getString(ctx, name);
             try {
-                val = (T)(Object)Enum.valueOf((Class<? extends Enum>)type, StringArgumentType.getString(ctx, name).toUpperCase());
+                val = (T)(Object)Enum.valueOf((Class<? extends Enum>)type, valName.toUpperCase());
             }
             catch(IllegalArgumentException e){
                 throw new InvalidEnumException(e);

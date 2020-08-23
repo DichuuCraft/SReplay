@@ -246,7 +246,7 @@ public class Recorder implements IPacketListener {
     private void saveMetadata(){
         saveService.submit(() -> {
             String[] players = new String[uuids.size()];
-            uuids.stream().map(uuid -> uuid.toString()).collect(Collectors.toList()).toArray(players);
+            uuids.stream().map(UUID::toString).collect(Collectors.toList()).toArray(players);
             metaData.setPlayers(players);
             try {
                 replayFile.writeMetaData(metaData);

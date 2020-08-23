@@ -40,7 +40,7 @@ import org.apache.logging.log4j.Logger;
 
 import static com.hadroncfy.sreplay.config.TextRenderer.render;
 
-public class Photographer extends ServerPlayerEntity implements ISizeLimitExceededListener, WeatherView {
+public class Photographer extends ServerPlayerEntity implements ISizeLimitExceededListener {
     public static final String MCPR = ".mcpr";
     public static final ParamManager PARAM_MANAGER = new ParamManager(RecordingParam.class);
     private static final String RAW_SUBDIR = "raw";
@@ -136,7 +136,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         if (!raw.exists()){
             raw.mkdirs();
         }
-        recorder = new Recorder(getGameProfile(), server, this, new File(raw, recordingFileName), rparam);
+        recorder = new Recorder(getGameProfile(), server, this::getWeather, new File(raw, recordingFileName), rparam);
         connection = new HackyClientConnection(NetworkSide.CLIENTBOUND, recorder);
         
         recorder.setOnSizeLimitExceededListener(this);
@@ -178,7 +178,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         method_14226();// playerTick
         
         final long now = System.currentTimeMillis();
-        if (now - lastTablistUpdateTime >= 1000){
+        if (recorder != null && now - lastTablistUpdateTime >= 1000){
             lastTablistUpdateTime = now;
             if (!recorder.isSoftPaused()){
                 server.getPlayerManager().sendToAll(new PlayerListS2CPacket(Action.UPDATE_DISPLAY_NAME, this));
@@ -283,10 +283,16 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
 
     @Override
     public void kill(){
-        kill(null, true);
+        kill(true);
     }
 
-    public void kill(Runnable r, boolean async) {
+    private void postKill(){
+        if (networkHandler != null){
+            networkHandler.onDisconnected(new LiteralText("Killed"));
+        }
+    }
+
+    public CompletableFuture<Void> kill(boolean async) {
         if (recorder != null){
             final File saveFile = new File(outputDir, getSaveName() + MCPR);
             recorder.stop();
@@ -306,27 +312,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
                 f.join();
             }
         }
-        final Runnable task =  () -> {
-            if (networkHandler != null){
-                networkHandler.onDisconnected(new LiteralText("Killed"));
-            }
-            if (r != null){
-                // Whatever went wrong, save the recording first
-                try {
-                    r.run();
-                }
-                catch(Throwable e){
-                    LOGGER.error("error killing photographer", e);
-                    e.printStackTrace();
-                }
-            }
-        };
-        if (async){
-            server.send(new ServerTask(server.getTicks(), task));
-        }
-        else {
-            task.run();
-        }
+        return CompletableFuture.runAsync(this::postKill, async ? this::executeServerTask : this::executeNow);
     }
 
     @Override
@@ -341,7 +327,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     }
 
     public void reconnect(){
-        kill(() -> {
+        kill(true).thenRun(() -> {
             reconnectCount++;
             try {
                 connect();
@@ -349,16 +335,24 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
                 server.getPlayerManager().broadcastChatMessage(TextRenderer.render(SReplayMod.getFormats().failedToStartRecording, getGameProfile().getName()), true);
                 e.printStackTrace();
             }
-        }, true);
+        });
+    }
+
+    private void executeServerTask(Runnable r){
+        server.send(new ServerTask(server.getTicks(), r));
+    }
+
+    private void executeNow(Runnable r){
+        r.run();
     }
 
     @Override
     public void onSizeLimitExceeded(long size) {
         if (rparam.autoReconnect){
-            reconnect();
+            executeServerTask(this::reconnect);
         }
         else {
-            kill();
+            executeServerTask(this::kill);
         }
     }
 
@@ -367,9 +361,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     }
 
     public static void killAllFakes(MinecraftServer server, boolean async) {
-        // LOGGER.info("Killing all fakes");
-        listFakes(server).forEach(p -> LOGGER.info("Fake: {}", p.getGameProfile().getName()));
-        listFakes(server).forEach(p -> p.kill(null, async));
+        listFakes(server).forEach(p -> p.kill(async));
     }
 
     public static Collection<Photographer> listFakes(MinecraftServer server){
@@ -411,8 +403,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         }
     }
 
-    @Override
-    public ForcedWeather getWeather() {
+    private ForcedWeather getWeather() {
         if (world.isThundering()){
             return ForcedWeather.THUNDER;
         }

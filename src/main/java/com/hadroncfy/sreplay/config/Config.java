@@ -29,6 +29,7 @@ public class Config {
     public int timeLimit = -1;
     public int itemsPerPage = 20;
     public boolean autoReconnect = true;
+    public boolean debugCrash = false;
     public Pattern playerNamePattern = Pattern.compile("^cam_.*$");
 
     public Formats formats = new Formats();
