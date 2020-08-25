@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 
 import com.hadroncfy.sreplay.SReplayMod;
 import com.hadroncfy.sreplay.config.TextRenderer;
+import com.hadroncfy.sreplay.mixin.GameStateChangeS2CPacketAccessor;
 import com.hadroncfy.sreplay.mixin.PlayerSpawnS2CPacketAccessor;
 import com.hadroncfy.sreplay.mixin.WorldTimeUpdateS2CPacketAccessor;
 import com.mojang.authlib.GameProfile;
@@ -358,7 +359,7 @@ public class Recorder implements IPacketListener {
                 p = new WorldTimeUpdateS2CPacket(p2.getTime(), param.dayTime, false);
             }
             if (param.forcedWeather != ForcedWeather.NONE && p instanceof GameStateChangeS2CPacket){
-                int r = ((GameStateChangeS2CPacket)p).getReason();
+                int r = ((GameStateChangeS2CPacketAccessor)p).getReason();
                 if (r == 1 || r == 2 || r == 7 || r == 8){
                     return;
                 }

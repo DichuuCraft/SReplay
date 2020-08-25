@@ -30,7 +30,6 @@ import net.minecraft.text.LiteralText;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
-import net.minecraft.util.Lazy;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
 import net.minecraft.world.dimension.DimensionType;
@@ -46,13 +45,6 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     private static final String RAW_SUBDIR = "raw";
     private static final GameMode MODE = GameMode.SPECTATOR;
     private static final Logger LOGGER = LogManager.getLogger();
-    private static final Lazy<Class<?>> carpetPlayerClass = new Lazy<>(() -> {
-        try {
-            return Class.forName("carpet.patches.EntityPlayerMPFake");
-        } catch (ClassNotFoundException e) {
-            return null;
-        }
-    });
     private final RecordingParam rparam;
     private int reconnectCount = 0;
     private long lastTablistUpdateTime;
@@ -186,12 +178,8 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         }
     }
 
-    private boolean isRealPlayer(Entity entity){
-        if (entity instanceof ServerPlayerEntity){
-            Class<?> c = carpetPlayerClass.get();
-            return !((entity instanceof Photographer) || (c != null && c.isInstance(entity)));
-        }
-        return false;
+    private static boolean isRealPlayer(Entity entity){
+        return entity.getClass() == ServerPlayerEntity.class;
     }
 
     @Override
