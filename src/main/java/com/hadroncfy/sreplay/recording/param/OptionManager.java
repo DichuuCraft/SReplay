@@ -28,21 +28,21 @@ import static com.hadroncfy.sreplay.SReplayMod.getFormats;
 
 import static com.hadroncfy.sreplay.config.TextRenderer.render;
 
-public class ParamManager {
+public class OptionManager {
     private final Class<?> paramClass;
-    private final Map<String, ParamEntry<?>> params = new HashMap<>();
+    private final Map<String, OptionEntry<?>> params = new HashMap<>();
 
-    public ParamManager(Class<?> paramClass) {
+    public OptionManager(Class<?> paramClass) {
         this.paramClass = paramClass;
         for (Field f : paramClass.getDeclaredFields()) {
-            ParamEntry<?> entry = new ParamEntry<>(f);
+            OptionEntry<?> entry = new OptionEntry<>(f);
             params.put(entry.name, entry);
         }
     }
 
     public LiteralArgumentBuilder<ServerCommandSource> buildCommand() {
         LiteralArgumentBuilder<ServerCommandSource> ret = literal("set");
-        for (ParamEntry<?> entry : params.values()) {
+        for (OptionEntry<?> entry : params.values()) {
             String name = entry.name;
             Executor cmd = new Executor(entry);
             ret.then(literal(name).executes(cmd).then(getArgument(entry).executes(cmd)));
@@ -57,7 +57,7 @@ public class ParamManager {
                 .executes(ctx -> {
                     ServerCommandSource src = ctx.getSource();
                     String name = StringArgumentType.getString(ctx, "param");
-                    ParamEntry<?> entry = params.get(name);
+                    OptionEntry<?> entry = params.get(name);
                     if (entry != null){
                         src.sendFeedback(render(getFormats().paramHelp, 
                             name, 
@@ -74,7 +74,7 @@ public class ParamManager {
     }
 
     @SuppressWarnings({"rawtypes"})
-    private static RequiredArgumentBuilder<ServerCommandSource, ?> getArgument(ParamEntry<?> entry){
+    private static RequiredArgumentBuilder<ServerCommandSource, ?> getArgument(OptionEntry<?> entry){
         Class<?> type = entry.type;
         String name = entry.name;
         if (type.equals(boolean.class)) {
@@ -92,9 +92,9 @@ public class ParamManager {
     }
 
     private class Executor implements Command<ServerCommandSource> {
-        private final ParamEntry<?> entry;
+        private final OptionEntry<?> entry;
 
-        Executor(ParamEntry<?> entry) {
+        Executor(OptionEntry<?> entry) {
             this.entry = entry;
         }
 

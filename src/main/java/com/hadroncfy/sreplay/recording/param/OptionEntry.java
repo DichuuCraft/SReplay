@@ -10,7 +10,7 @@ import com.mojang.brigadier.context.CommandContext;
 
 import net.minecraft.server.command.ServerCommandSource;
 
-public class ParamEntry<T> {
+public class OptionEntry<T> {
     // public final Class<T> clazz;
     public final Field field;
     public final Class<T> type;
@@ -18,10 +18,10 @@ public class ParamEntry<T> {
     public final List<Validator<T>> validators = new ArrayList<>();
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
-    ParamEntry(Field field) {
+    OptionEntry(Field field) {
         this.field = field;
         type = (Class<T>) field.getType();
-        Param p = field.getAnnotation(Param.class);
+        Option p = field.getAnnotation(Option.class);
         desc = p.desc();
         if (p.name().equals("")){
             name = field.getName();

@@ -130,6 +130,7 @@ public class SReplayFile implements IReplayFile {
             os.putNextEntry(new ZipEntry(RECORDING_FILE_CRC32));
             Writer writer = new OutputStreamWriter(os);
             writer.write(Long.toString(crc32.getValue()));
+            writer.flush();
         }
 
         for (String fileName: tmpDir.list()){

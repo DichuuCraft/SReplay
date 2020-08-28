@@ -1,7 +1,7 @@
 package com.hadroncfy.sreplay.recording;
 
 import com.hadroncfy.sreplay.config.Config;
-import com.hadroncfy.sreplay.recording.param.Param;
+import com.hadroncfy.sreplay.recording.param.Option;
 import com.hadroncfy.sreplay.recording.param.Validator;
 
 import static com.hadroncfy.sreplay.SReplayMod.getFormats;
@@ -10,45 +10,45 @@ import java.util.function.Consumer;
 
 import net.minecraft.text.Text;
 
-public class RecordingParam {
-    @Param(
+public class RecordingOption {
+    @Option(
         desc = "sreplay.param.sizeLimit.desc",
         validators = SizeLimitValidator.class
     )
     public int sizeLimit = -1;
 
-    @Param(
+    @Option(
         desc = "sreplay.param.timeLimit.desc",
         validators = TimeLimitValidator.class
     )
     public int timeLimit = -1;
 
-    @Param(desc = "sreplay.param.autoReconnect.desc")
+    @Option(desc = "sreplay.param.autoReconnect.desc")
     public boolean autoReconnect = true;
     
-    @Param(desc = "sreplay.param.autoPause.desc")
+    @Option(desc = "sreplay.param.autoPause.desc")
     public boolean autoPause = false;
 
-    @Param(
+    @Option(
         desc = "sreplay.param.watchDistance.desc",
         validators = PositiveValidator.class
     )
     public int watchDistance;
 
-    @Param(
+    @Option(
         desc = "sreplay.param.dayTime.desc",
         validators = NonNegativeOrMinus1.class
     )
     public int dayTime = -1;
 
-    @Param(desc = "sreplay.param.forcedWeather.desc")
+    @Option(desc = "sreplay.param.forcedWeather.desc")
     public ForcedWeather forcedWeather = ForcedWeather.NONE;
 
-    @Param(desc = "sreplay.param.pauseMarkers.desc")
+    @Option(desc = "sreplay.param.pauseMarkers.desc")
     public boolean pauseMarkers = false;
 
-    public static RecordingParam createDefaultRecordingParam(Config config, int watchDistance) {
-        RecordingParam p = new RecordingParam();
+    public static RecordingOption createDefaultRecordingParam(Config config, int watchDistance) {
+        RecordingOption p = new RecordingOption();
         p.autoReconnect = config.autoReconnect;
         p.sizeLimit = config.sizeLimit;
         p.timeLimit = config.timeLimit;

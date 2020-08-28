@@ -10,7 +10,7 @@ import java.util.concurrent.CompletableFuture;
 import com.hadroncfy.sreplay.SReplayMod;
 import com.hadroncfy.sreplay.config.TextRenderer;
 import com.hadroncfy.sreplay.mixin.PlayerManagerAccessor;
-import com.hadroncfy.sreplay.recording.param.ParamManager;
+import com.hadroncfy.sreplay.recording.param.OptionManager;
 import com.mojang.authlib.GameProfile;
 
 import net.minecraft.entity.Entity;
@@ -41,11 +41,11 @@ import static com.hadroncfy.sreplay.config.TextRenderer.render;
 
 public class Photographer extends ServerPlayerEntity implements ISizeLimitExceededListener {
     public static final String MCPR = ".mcpr";
-    public static final ParamManager PARAM_MANAGER = new ParamManager(RecordingParam.class);
+    public static final OptionManager PARAM_MANAGER = new OptionManager(RecordingOption.class);
     private static final String RAW_SUBDIR = "raw";
     private static final GameMode MODE = GameMode.SPECTATOR;
     private static final Logger LOGGER = LogManager.getLogger();
-    private final RecordingParam rparam;
+    private final RecordingOption rparam;
     private int reconnectCount = 0;
     private long lastTablistUpdateTime;
     private HackyClientConnection connection;
@@ -56,7 +56,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
 
     private String recordingFileName, saveFileName;
 
-    public Photographer(MinecraftServer server, ServerWorld world, GameProfile profile, ServerPlayerInteractionManager im, File outputDir, RecordingParam param){
+    public Photographer(MinecraftServer server, ServerWorld world, GameProfile profile, ServerPlayerInteractionManager im, File outputDir, RecordingOption param){
         super(server, world, profile, im);
         currentWatchDistance = server.getPlayerManager().getViewDistance();
         rparam = param;
@@ -64,10 +64,10 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     }
 
     public Photographer(MinecraftServer server, ServerWorld world, GameProfile profile, ServerPlayerInteractionManager im, File outputDir){
-        this(server, world, profile, im, outputDir, new RecordingParam());
+        this(server, world, profile, im, outputDir, new RecordingOption());
     } 
 
-    public static Photographer create(String name, MinecraftServer server, DimensionType dim, Vec3d pos, File outputDir, RecordingParam param){
+    public static Photographer create(String name, MinecraftServer server, DimensionType dim, Vec3d pos, File outputDir, RecordingOption param){
         GameProfile profile = new GameProfile(PlayerEntity.getOfflinePlayerUuid(name), name);
         ServerWorld world = server.getWorld(dim);
         ServerPlayerInteractionManager im = new ServerPlayerInteractionManager(world);
@@ -78,7 +78,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     }
 
     public static Photographer create(String name, MinecraftServer server, DimensionType dim, Vec3d pos, File outputDir){
-        return create(name, server, dim, pos, outputDir, RecordingParam.createDefaultRecordingParam(SReplayMod.getConfig(), server.getPlayerManager().getViewDistance()));
+        return create(name, server, dim, pos, outputDir, RecordingOption.createDefaultRecordingParam(SReplayMod.getConfig(), server.getPlayerManager().getViewDistance()));
     }
 
     private boolean checkForRecordingFileDupe(String name){
@@ -145,7 +145,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     }
 
     public void syncParams(){
-        if (recorder != null){
+        if (!recorder.isStopped()){
             recorder.syncParam();
             updatePause();
             if (currentWatchDistance != rparam.watchDistance){
@@ -170,7 +170,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         method_14226();// playerTick
         
         final long now = System.currentTimeMillis();
-        if (recorder != null && now - lastTablistUpdateTime >= 1000){
+        if (!recorder.isStopped() && now - lastTablistUpdateTime >= 1000){
             lastTablistUpdateTime = now;
             if (!recorder.isSoftPaused()){
                 server.getPlayerManager().sendToAll(new PlayerListS2CPacket(Action.UPDATE_DISPLAY_NAME, this));
@@ -201,7 +201,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     }
 
     private void updatePause(){
-        if (recorder != null && rparam.autoPause){
+        if (!recorder.isStopped() && rparam.autoPause){
             final String name = getGameProfile().getName();
             if (trackedPlayers.isEmpty() && !recorder.isRecordingPaused()){
                 recorder.pauseRecording();
@@ -230,7 +230,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
 
     @Override
     public Text method_14206() {
-        if (recorder == null){
+        if (recorder.isStopped()){
             return null;
         }
         long duration = recorder.getRecordedTime() / 1000;
@@ -281,9 +281,9 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     }
 
     public CompletableFuture<Void> kill(boolean async) {
-        if (recorder != null){
-            final File saveFile = new File(outputDir, getSaveName() + MCPR);
+        if (!recorder.isStopped()){
             recorder.stop();
+            final File saveFile = new File(outputDir, getSaveName() + MCPR);
             CompletableFuture<Void> f = recorder.saveRecording(saveFile)
             .thenRun(() -> {
                 server.getPlayerManager().broadcastChatMessage(
@@ -295,7 +295,6 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
                     TextRenderer.render(SReplayMod.getFormats().failedToSaveRecordingFile, getGameProfile().getName(), exception.toString()), false);
                 return null;
             });
-            recorder = null;
             if (!async){
                 f.join();
             }
@@ -309,7 +308,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     }
 
     public void onSoftPause() {
-        if (recorder != null){
+        if (!recorder.isStopped()){
             recorder.setSoftPaused();
         }        
     }
@@ -344,7 +343,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         }
     }
 
-    public RecordingParam getRecordingParam(){
+    public RecordingOption getRecordingParam(){
         return rparam;
     }
 

@@ -3,10 +3,7 @@ package com.hadroncfy.sreplay.recording;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
@@ -46,7 +43,7 @@ public class Recorder implements IPacketListener {
     
     private final IReplayFile replayFile;
     private final Metadata metaData;
-    private final RecordingParam param;
+    private final RecordingOption param;
     
     private final ExecutorService saveService = Executors.newSingleThreadExecutor();
     private long startTime;
@@ -63,7 +60,7 @@ public class Recorder implements IPacketListener {
 
     private ISizeLimitExceededListener limiter = null;
 
-    public Recorder(GameProfile profile, MinecraftServer server, WeatherView wv, File outputPath, RecordingParam param) throws IOException {
+    public Recorder(GameProfile profile, MinecraftServer server, WeatherView wv, File outputPath, RecordingOption param) throws IOException {
         this.server = server;
         this.profile = profile;
         this.wv = wv;
@@ -191,6 +188,10 @@ public class Recorder implements IPacketListener {
 
     public void stop(){
         stopped = true;
+    }
+
+    public boolean isStopped(){
+        return stopped;
     }
 
     public long getRecordedBytes(){

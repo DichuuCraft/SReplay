@@ -14,6 +14,16 @@ public class DigestOutputStream extends OutputStream {
     }
 
     @Override
+    public void close() throws IOException {
+        out.close();
+    }
+
+    @Override
+    public void flush() throws IOException {
+        out.flush();
+    }
+
+    @Override
     public void write(int b) throws IOException {
         sum.update(b);
         out.write(b);
