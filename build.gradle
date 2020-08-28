@@ -28,9 +28,9 @@ shadowJar {
 	configurations = [
 		project.configurations.shade
 	]
-	exclude '.files.swp'
-	exclude 'mojang-translations'
+	exclude 'mojang-translations/**'
 	exclude 'com/google/**'
+	exclude 'it/unimi/dsi/fastutil/**'
 
 	classifier = 'all-unremapped'
 
@@ -38,6 +38,10 @@ shadowJar {
 	relocate 'com.replaymod.replaystudio', 'com.hadroncfy.libs.replaystudio'
 	relocate 'net.md_5.bungee', 'com.hadroncfy.libs.bungee'
 	relocate 'com.github.steveice10', 'com.hadroncfy.libs.steveice10'
+
+	minimize {
+        exclude(dependency('.*spongepowered:mixin:.*'))
+    }
 }
 
 dependencies {
@@ -52,7 +56,7 @@ dependencies {
 	// PSA: Some older mods, compiled on Loom 0.2.1, might have outdated Maven POMs.
 	// You may need to force-disable transitiveness on them.
 
-	shade "com.github.ReplayMod.ReplayStudio:${project.minecraft_version}:${project.replaystudio_commit}", shadeExclusions
+	shade "com.github.ReplayMod:ReplayStudio:${project.replaystudio_commit}", shadeExclusions
 	compileOnly "com.google.code.gson:gson:2.8.6"
 }
 
