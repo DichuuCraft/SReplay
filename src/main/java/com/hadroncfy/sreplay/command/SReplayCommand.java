@@ -63,9 +63,9 @@ public class SReplayCommand {
                 .then(literal("locate").executes(SReplayCommand::locate))
                 .then(literal("marker")
                     .then(literal("list").executes(SReplayCommand::getMarkers)
-                        .then(argument("page", IntegerArgumentType.integer(1)).executes(SReplayCommand::getMarkers))
+                        .then(argument("page", IntegerArgumentType.integer(1)).executes(SReplayCommand::getMarkers)))
                     .then(literal("add").then(argument("marker", StringArgumentType.greedyString()).executes(SReplayCommand::marker)))
-                    .then(literal("remove").then(argument("markerId", IntegerArgumentType.integer(1)).executes(SReplayCommand::removeMarker)))))))
+                    .then(literal("remove").then(argument("markerId", IntegerArgumentType.integer(1)).executes(SReplayCommand::removeMarker))))))
             .then(literal("list").executes(SReplayCommand::listRecordings)
                 .then(argument("page", IntegerArgumentType.integer(1)).executes(SReplayCommand::listRecordings)))
             .then(literal("delete").then(argument("recording", StringArgumentType.greedyString())
@@ -91,7 +91,7 @@ public class SReplayCommand {
     }
 
     private static CompletableFuture<Suggestions> suggestRecordingFile(CommandContext<ServerCommandSource> src, SuggestionsBuilder sb){
-        return suggestMatching(SReplayMod.listRecordings().stream().map(f -> f.getName()), sb);
+        return suggestMatching(SReplayMod.listRecordings().stream().map(File::getName), sb);
     }
 
     private static int simulateCrash(CommandContext<ServerCommandSource> ctx){
@@ -147,7 +147,7 @@ public class SReplayCommand {
 
             src.sendFeedback(render(SReplayMod.getFormats().markerListTitle, name), false);
             paginate(ctx, p.getRecorder().getMarkers(), (i, marker) -> {
-                src.sendFeedback(render(SReplayMod.getFormats().markerListItem, name, Integer.toString(i), marker.getName()), false);
+                src.sendFeedback(render(SReplayMod.getFormats().markerListItem, name, Integer.toString(i), marker.name), false);
             });
         }
         return 0;

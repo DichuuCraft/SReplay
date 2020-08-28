@@ -1,6 +1,5 @@
 plugins {
 	id 'fabric-loom' version '0.2.7-SNAPSHOT'
-	id 'com.github.johnrengelman.shadow' version '5.2.0'
 }
 
 repositories {
@@ -14,36 +13,6 @@ archivesBaseName = project.archives_base_name
 version = project.minecraft_version+'-'+project.mod_version
 group = project.maven_group
 
-configurations {
-	shade
-	implementation.extendsFrom shade
-}
-
-def shadeExclusions = {
-}
-
-shadowJar {
-	// XXX: exclude a lot of things by hand...
-	from project.configurations.shade
-	configurations = [
-		project.configurations.shade
-	]
-	exclude 'mojang-translations/**'
-	exclude 'com/google/**'
-	exclude 'it/unimi/dsi/fastutil/**'
-
-	classifier = 'all-unremapped'
-
-	relocate 'org.apache.commons', 'com.hadroncfy.libs.apache'
-	relocate 'com.replaymod.replaystudio', 'com.hadroncfy.libs.replaystudio'
-	relocate 'net.md_5.bungee', 'com.hadroncfy.libs.bungee'
-	relocate 'com.github.steveice10', 'com.hadroncfy.libs.steveice10'
-
-	minimize {
-        exclude(dependency('.*spongepowered:mixin:.*'))
-    }
-}
-
 dependencies {
 	//to change the versions see the gradle.properties file
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
@@ -56,7 +25,6 @@ dependencies {
 	// PSA: Some older mods, compiled on Loom 0.2.1, might have outdated Maven POMs.
 	// You may need to force-disable transitiveness on them.
 
-	shade "com.github.ReplayMod:ReplayStudio:${project.replaystudio_commit}", shadeExclusions
 	compileOnly "com.google.code.gson:gson:2.8.6"
 }
 
@@ -91,13 +59,3 @@ task sourcesJar(type: Jar, dependsOn: classes) {
 jar {
 	from "LICENSE"
 }
-
-build.dependsOn shadowJar
-
-task remapShadowJar(type: net.fabricmc.loom.task.RemapJarTask, dependsOn: shadowJar) {
-	input = tasks.shadowJar.archiveFile
-	classifier = 'all'
-	addNestedDependencies.set(true)
-}
-
-defaultTasks 'remapShadowJar'

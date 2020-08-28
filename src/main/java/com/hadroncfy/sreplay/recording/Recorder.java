@@ -12,26 +12,19 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import com.hadroncfy.sreplay.SReplayMod;
 import com.hadroncfy.sreplay.config.TextRenderer;
 import com.hadroncfy.sreplay.mixin.GameStateChangeS2CPacketAccessor;
 import com.hadroncfy.sreplay.mixin.PlayerSpawnS2CPacketAccessor;
 import com.hadroncfy.sreplay.mixin.WorldTimeUpdateS2CPacketAccessor;
+import com.hadroncfy.sreplay.recording.mcpr.IReplayFile;
+import com.hadroncfy.sreplay.recording.mcpr.Marker;
+import com.hadroncfy.sreplay.recording.mcpr.Metadata;
+import com.hadroncfy.sreplay.recording.mcpr.SReplayFile;
 import com.mojang.authlib.GameProfile;
-import com.replaymod.replaystudio.data.Marker;
-import com.replaymod.replaystudio.io.ReplayOutputStream;
-import com.replaymod.replaystudio.protocol.PacketTypeRegistry;
-import com.replaymod.replaystudio.replay.ReplayFile;
-import com.replaymod.replaystudio.replay.ReplayMetaData;
-import com.replaymod.replaystudio.replay.ZipReplayFile;
-import com.replaymod.replaystudio.studio.ReplayStudio;
-import com.replaymod.replaystudio.us.myles.ViaVersion.api.protocol.ProtocolVersion;
-import com.replaymod.replaystudio.us.myles.ViaVersion.packets.State;
 
 import net.minecraft.SharedConstants;
-import net.minecraft.network.NetworkSide;
 import net.minecraft.network.NetworkState;
 import net.minecraft.network.Packet;
 import net.minecraft.network.packet.s2c.login.LoginSuccessS2CPacket;
@@ -40,13 +33,9 @@ import net.minecraft.network.packet.s2c.play.GameStateChangeS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerSpawnS2CPacket;
 import net.minecraft.network.packet.s2c.play.WorldTimeUpdateS2CPacket;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.util.PacketByteBuf;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 
 public class Recorder implements IPacketListener {
     private static final String MARKER_PAUSE = "PAUSE";
@@ -55,11 +44,8 @@ public class Recorder implements IPacketListener {
     private final GameProfile profile;
     private final WeatherView wv;
     
-    private final Set<UUID> uuids = new HashSet<>();
-    
-    private final ReplayFile replayFile;
-    private final ReplayOutputStream packetSaveStream;
-    private final ReplayMetaData metaData;
+    private final IReplayFile replayFile;
+    private final Metadata metaData;
     private final RecordingParam param;
     
     private final ExecutorService saveService = Executors.newSingleThreadExecutor();
@@ -70,7 +56,6 @@ public class Recorder implements IPacketListener {
     private NetworkState nstate = NetworkState.LOGIN;
     private boolean stopped = false;
     private boolean isSaving = false;
-    private long bytesRecorded = 0; 
     private boolean paused = false;
     private boolean gPaused = false;
     private boolean followTick = false;
@@ -85,9 +70,8 @@ public class Recorder implements IPacketListener {
 
         this.param = param;
 
-        replayFile = new ZipReplayFile(new ReplayStudio(), outputPath);
-        packetSaveStream = replayFile.writePacketData();
-        metaData = new ReplayMetaData();
+        replayFile = new SReplayFile(outputPath);
+        metaData = new Metadata();
     }
 
     public void setOnSizeLimitExceededListener(ISizeLimitExceededListener l){
@@ -106,41 +90,17 @@ public class Recorder implements IPacketListener {
         startTime = System.currentTimeMillis();
         startTick = server.getTicks();
         
-        metaData.setSingleplayer(false);
-        metaData.setServerName(SReplayMod.getConfig().serverName);
-        metaData.setGenerator("sreplay");
-        metaData.setDate(startTime);
-        metaData.setMcVersion("1.14.4");
+        metaData.singleplayer = false;
+        metaData.serverName = SReplayMod.getConfig().serverName;
+        metaData.generator = "sreplay";
+        metaData.date = startTime;
+        metaData.mcversion = SharedConstants.getGameVersion().getName();
         server.getPlayerManager()
             .broadcastChatMessage(TextRenderer.render(SReplayMod.getFormats().startedRecording, profile.getName()), true);
 
         // Must contain this packet, otherwise ReplayMod would complain
         savePacket(new LoginSuccessS2CPacket(profile));
         nstate = NetworkState.PLAY;
-    }
-
-    private static PacketTypeRegistry getPacketTypeRegistry(boolean login){
-        return PacketTypeRegistry.get(ProtocolVersion.getProtocol(SharedConstants.getGameVersion().getProtocolVersion()), login ? State.LOGIN : State.PLAY);
-    }
-
-    private com.replaymod.replaystudio.protocol.Packet getReplayPacket(Packet<?> packet) throws Exception {
-        int id = nstate.getPacketId(NetworkSide.CLIENTBOUND, packet);
-        ByteBuf bbuf = Unpooled.buffer();
-        try {
-            packet.write(new PacketByteBuf(bbuf));
-            return new com.replaymod.replaystudio.protocol.Packet(
-                getPacketTypeRegistry(nstate == NetworkState.LOGIN), 
-                id,
-                com.github.steveice10.netty.buffer.Unpooled.wrappedBuffer(
-                    bbuf.array(),
-                    bbuf.arrayOffset(),
-                    bbuf.readableBytes()
-                )
-            );
-        }
-        finally {
-            bbuf.release();
-        }
     }
 
     public void setSoftPaused(){
@@ -204,6 +164,7 @@ public class Recorder implements IPacketListener {
     }
 
     private void savePacket(Packet<?> packet) {
+        long bytesRecorded = replayFile.getRecordedBytes();
         if (param.sizeLimit != -1 && bytesRecorded > ((long)param.sizeLimit) << 20 || param.timeLimit != -1 && getRecordedTime() > (long)param.timeLimit * 1000){
             stop();
             if (limiter != null){
@@ -213,12 +174,10 @@ public class Recorder implements IPacketListener {
         }
         try {
             final long timestamp = getCurrentTimeAndUpdate();
+            final boolean login = nstate == NetworkState.LOGIN;
             saveService.submit(() -> {
                 try {
-                    com.replaymod.replaystudio.protocol.Packet rp = getReplayPacket(packet);
-                    int size = rp.getBuf().readableBytes();
-                    packetSaveStream.write(timestamp, rp);
-                    bytesRecorded += size;
+                    replayFile.savePacket(timestamp, packet, login);
                 } catch (Exception e) {
                     LOGGER.error("Error saving packet", e);
                     e.printStackTrace();
@@ -235,13 +194,11 @@ public class Recorder implements IPacketListener {
     }
 
     public long getRecordedBytes(){
-        return bytesRecorded;
+        return replayFile.getRecordedBytes();
     }
 
     public void addMarker(String name){
-        Marker m = new Marker();
-        m.setName(name);
-        m.setTime((int) getRecordedTime());
+        Marker m = new Marker(name, (int) getRecordedTime());
         markers.add(m);
 
         saveMarkers();
@@ -258,11 +215,8 @@ public class Recorder implements IPacketListener {
 
     private void saveMetadata(){
         saveService.submit(() -> {
-            String[] players = new String[uuids.size()];
-            uuids.stream().map(UUID::toString).collect(Collectors.toList()).toArray(players);
-            metaData.setPlayers(players);
             try {
-                replayFile.writeMetaData(getPacketTypeRegistry(true), metaData);
+                replayFile.saveMetaData(metaData);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -272,10 +226,8 @@ public class Recorder implements IPacketListener {
     private void saveMarkers(){
         if (!markers.isEmpty()){
             saveService.submit(() -> {
-                Set<Marker> m = new HashSet<>();
-                m.addAll(markers);
                 try {
-                    replayFile.writeMarkers(m);
+                    replayFile.saveMarkers(markers);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -286,7 +238,7 @@ public class Recorder implements IPacketListener {
     public CompletableFuture<Void> saveRecording(File dest) {
         if (!isSaving){
             isSaving = true;
-            metaData.setDuration((int) lastPacket);
+            metaData.duration = (int) lastPacket;
             server.getPlayerManager()
                     .broadcastChatMessage(TextRenderer.render(SReplayMod.getFormats().savingRecordingFile, profile.getName()), true);
             return CompletableFuture.runAsync(() -> {
@@ -300,8 +252,7 @@ public class Recorder implements IPacketListener {
                 }
                 try {
                     synchronized (replayFile) {
-                        replayFile.saveTo(dest);
-                        replayFile.close();
+                        replayFile.closeAndSave(dest);
                     }
                 }
                 catch(IOException e){
@@ -360,7 +311,7 @@ public class Recorder implements IPacketListener {
     public void onPacket(Packet<?> p) {
         if (!stopped){
             if (p instanceof PlayerSpawnS2CPacket){
-                uuids.add(((PlayerSpawnS2CPacketAccessor) p).getUUID());
+                metaData.players.add(((PlayerSpawnS2CPacketAccessor) p).getUUID());
                 saveMetadata();
             }
             if (p instanceof DisconnectS2CPacket){

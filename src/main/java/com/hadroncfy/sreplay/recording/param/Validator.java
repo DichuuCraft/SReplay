@@ -1,6 +1,6 @@
 package com.hadroncfy.sreplay.recording.param;
 
-import com.github.steveice10.netty.util.internal.shaded.org.jctools.queues.MessagePassingQueue.Consumer;
+import java.util.function.Consumer;
 
 import net.minecraft.text.Text;
 
