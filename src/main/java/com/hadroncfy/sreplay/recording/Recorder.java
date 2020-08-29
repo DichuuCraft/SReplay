@@ -18,6 +18,7 @@ import com.hadroncfy.sreplay.mixin.WorldTimeUpdateS2CPacketAccessor;
 import com.hadroncfy.sreplay.recording.mcpr.IReplayFile;
 import com.hadroncfy.sreplay.recording.mcpr.Marker;
 import com.hadroncfy.sreplay.recording.mcpr.Metadata;
+import com.hadroncfy.sreplay.recording.mcpr.ProgressBar;
 import com.hadroncfy.sreplay.recording.mcpr.SReplayFile;
 import com.mojang.authlib.GameProfile;
 
@@ -236,7 +237,7 @@ public class Recorder implements IPacketListener {
         }
     }
 
-    public CompletableFuture<Void> saveRecording(File dest) {
+    public CompletableFuture<Void> saveRecording(File dest, ProgressBar bar) {
         if (!isSaving){
             isSaving = true;
             metaData.duration = (int) lastPacket;
@@ -253,7 +254,7 @@ public class Recorder implements IPacketListener {
                 }
                 try {
                     synchronized (replayFile) {
-                        replayFile.closeAndSave(dest);
+                        replayFile.closeAndSave(dest, bar);
                     }
                 }
                 catch(IOException e){

@@ -284,7 +284,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         if (!recorder.isStopped()){
             recorder.stop();
             final File saveFile = new File(outputDir, getSaveName() + MCPR);
-            CompletableFuture<Void> f = recorder.saveRecording(saveFile)
+            CompletableFuture<Void> f = recorder.saveRecording(saveFile, new RecordingSaveProgressBar(server.getPlayerManager().getPlayerList(), saveFile.getName()))
             .thenRun(() -> {
                 server.getPlayerManager().broadcastChatMessage(
                     TextRenderer.render(SReplayMod.getFormats().savedRecordingFile, getGameProfile().getName(), saveFile.getName()), false);

@@ -131,7 +131,8 @@ public class Formats {
     botLocation = white("[SReplay] ")
         .append(green("$1"))
         .append(white("位于"))
-        .append(white("[x: $2, y: $3, z: $4, dim: $5]"));
+        .append(white("[x: $2, y: $3, z: $4, dim: $5]")),
+    saveRecordingProgressBarTitle = white("保存录像文件").append(green("$1"));
 
     public Text[] help = new Text[]{
         new LiteralText("====== SReplay 用法 ======").setStyle(new Style().setColor(Formatting.YELLOW)),

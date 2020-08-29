@@ -11,5 +11,5 @@ public interface IReplayFile {
     void saveMarkers(List<Marker> markers) throws IOException;
     void savePacket(long timestamp, Packet<?> packet, boolean isLoginPhase) throws Exception;
     long getRecordedBytes();
-    void closeAndSave(File file) throws IOException;
+    void closeAndSave(File file, ProgressBar listener) throws IOException;
 }

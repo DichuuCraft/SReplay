@@ -1,6 +1,5 @@
 package com.hadroncfy.sreplay.recording.mcpr;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -47,7 +46,12 @@ public class SReplayFile implements IReplayFile {
     private final File tmpDir;
     private final DataOutputStream packetStream;
     private final CRC32 crc32 = new CRC32();
-    private long size = 0;
+    private long recordedSize = 0;
+
+    private long savedSize = 0;
+    private long totalSize = 0;
+    private int lastPercent;
+    private ProgressBar listener;
 
     private final File packetFile;
     private final File markerFile;
@@ -108,23 +112,33 @@ public class SReplayFile implements IReplayFile {
         packetStream.writeInt((int)timestamp);
         packetStream.writeInt(data.length);
         packetStream.write(data);
-        size += data.length + 8;
+        recordedSize += data.length + 8;
     }
 
     @Override
     public long getRecordedBytes() {
-        return size;
+        return recordedSize;
     }
 
     @Override
-    public void closeAndSave(File file) throws IOException {
+    public void closeAndSave(File file, ProgressBar listener) throws IOException {
         packetStream.close();
+        this.listener = listener;
+
+        totalSize = 0;
+        for (String fileName: tmpDir.list()){
+            File f = new File(tmpDir, fileName);
+            totalSize += f.length();
+        }
+        if (listener != null){
+            listener.onStart();
+        }
         
         try (ZipOutputStream os = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(file)))){
             for (String fileName: tmpDir.list()){
                 os.putNextEntry(new ZipEntry(fileName));
                 File f = new File(tmpDir, fileName);
-                copy(new BufferedInputStream(new FileInputStream(f)), os);
+                copy(new FileInputStream(f), os);
             }
             
             os.putNextEntry(new ZipEntry(RECORDING_FILE_CRC32));
@@ -138,13 +152,29 @@ public class SReplayFile implements IReplayFile {
             Files.delete(f.toPath());
         }
         Files.delete(tmpDir.toPath());
+
+        if (listener != null){
+            listener.onDone();
+        }
     }
 
-    private static void copy(InputStream in, OutputStream out) throws IOException {
-        byte[] buffer = new byte[2048];
+    private void updateProgress(){
+        if (listener != null){
+            float percent = (float)savedSize / (float)totalSize;
+            if ((int)percent != lastPercent){
+                listener.onProgress(percent);
+                lastPercent = (int)percent;
+            }
+        }
+    }
+
+    private void copy(InputStream in, OutputStream out) throws IOException {
+        byte[] buffer = new byte[8192];
         int len;
         while ((len = in.read(buffer)) > -1){
             out.write(buffer, 0, len);
+            savedSize += len;
+            updateProgress();
         }
         in.close();
     }
