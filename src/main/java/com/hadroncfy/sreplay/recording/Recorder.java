@@ -55,8 +55,10 @@ public class Recorder implements IPacketListener {
     private NetworkState nstate = NetworkState.LOGIN;
     private boolean stopped = false;
     private boolean isSaving = false;
+    private boolean hasSaved0 = false;
+
     private boolean paused = false;
-    private boolean gPaused = false;
+    private boolean resumeOnNextPacket = true;
     private boolean followTick = false;
     private final List<Marker> markers = new ArrayList<>();
 
@@ -79,10 +81,6 @@ public class Recorder implements IPacketListener {
 
     public long getStartTime(){
         return startTime;
-    }
-
-    public boolean isPaused(){
-        return paused;
     }
 
     public void start() {
@@ -121,7 +119,7 @@ public class Recorder implements IPacketListener {
     private synchronized long getCurrentTimeAndUpdate(){
         long now = getRecordedTime();
         if (paused){
-            if (!gPaused){
+            if (resumeOnNextPacket){
                 paused = false;
             }
             timeShift += now - lastPacket;
@@ -131,7 +129,7 @@ public class Recorder implements IPacketListener {
     }
 
     public void pauseRecording(){
-        gPaused = true;
+        resumeOnNextPacket = false;
         paused = true;
         if (param.pauseMarkers){
             addMarker(MARKER_PAUSE);
@@ -139,15 +137,15 @@ public class Recorder implements IPacketListener {
     }
 
     public boolean isRecordingPaused(){
-        return gPaused;
+        return !resumeOnNextPacket;
     }
 
     public boolean isSoftPaused(){
-        return !gPaused && paused;
+        return resumeOnNextPacket && paused;
     }
 
     public void resumeRecording(){
-        gPaused = false;
+        resumeOnNextPacket = true;
     }
 
     public synchronized void setFollowTick(boolean f){
@@ -238,7 +236,12 @@ public class Recorder implements IPacketListener {
         }
     }
 
+    public boolean hasSaved(){
+        return hasSaved0;
+    }
+
     public CompletableFuture<Void> saveRecording(File dest, ProgressBar bar) {
+        hasSaved0 = true;
         if (!isSaving){
             isSaving = true;
             metaData.duration = (int) lastPacket;

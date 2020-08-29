@@ -32,6 +32,7 @@ public class Formats {
         .append(new LiteralText("/sreplayer confirm $1").setStyle(new Style().setColor(Formatting.GOLD)))
         .append(new LiteralText("以确认此次操作")),
     deletedRecordingFile = new LiteralText("[SReplay] $1: 已删除录像文件$2"),
+    failedToDeleteRecordingFile = red("[SReplay] $1: 删除录像文件$2失败：$3"),
     operationCancelled = new LiteralText("[SReplay] 已取消操作"),
     incorrectConfirmationCode = red("[SReplay] 确认码不匹配"),
     fileNotFound = red("[SReplay] 文件$1不存在"),
@@ -132,7 +133,10 @@ public class Formats {
         .append(green("$1"))
         .append(white("位于"))
         .append(white("[x: $2, y: $3, z: $4, dim: $5]")),
-    saveRecordingProgressBarTitle = white("保存录像文件").append(green("$1"));
+    saveRecordingProgressBarTitle = white("保存录像文件").append(green("$1")),
+    killConfirm = new LiteralText("[SReplay] 确定要停止")
+        .append(green("$1"))
+        .append(white("的录制？"));
 
     public Text[] help = new Text[]{
         new LiteralText("====== SReplay 用法 ======").setStyle(new Style().setColor(Formatting.YELLOW)),

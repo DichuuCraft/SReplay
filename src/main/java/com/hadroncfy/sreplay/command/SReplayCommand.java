@@ -21,6 +21,7 @@ import static net.minecraft.server.command.CommandManager.literal;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -284,7 +285,7 @@ public class SReplayCommand {
     public static int pause(CommandContext<ServerCommandSource> ctx){
         Photographer p = requirePlayer(ctx);
         if (p != null){
-            p.getRecorder().pauseRecording();
+            p.setPaused(true);
             ctx.getSource().getMinecraftServer().getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().recordingPaused, ctx.getSource().getName(), p.getGameProfile().getName()), false);
             return 1;
         }
@@ -296,7 +297,7 @@ public class SReplayCommand {
     public static int resume(CommandContext<ServerCommandSource> ctx){
         Photographer p = requirePlayer(ctx);
         if (p != null){
-            p.getRecorder().resumeRecording();
+            p.setPaused(false);
             ctx.getSource().getMinecraftServer().getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().recordingResumed, ctx.getSource().getName(), p.getGameProfile().getName()), false);
             return 1;
         }
@@ -352,9 +353,19 @@ public class SReplayCommand {
         if (rec.exists()) {
             src.sendFeedback(render(SReplayMod.getFormats().aboutToDeleteRecording, rec.getName()), true);
             cm.submit(src.getName(), src, () -> {
-                rec.delete();
-                server.getPlayerManager()
-                    .sendToAll(render(SReplayMod.getFormats().deletedRecordingFile, src.getName(), rec.getName()));
+                try {
+                    Files.delete(rec.toPath());
+                    server.getPlayerManager()
+                        .broadcastChatMessage(render(SReplayMod.getFormats().deletedRecordingFile, src.getName(), rec.getName()), false);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    server.getPlayerManager().broadcastChatMessage(render(
+                        SReplayMod.getFormats().failedToDeleteRecordingFile,
+                        src.getName(),
+                        rec.getName(),
+                        e
+                    ), false);
+                }
             });
         } else {
             src.sendFeedback(render(SReplayMod.getFormats().fileNotFound, rec.getName()), true);
@@ -414,8 +425,10 @@ public class SReplayCommand {
 
     public static int playerKill(CommandContext<ServerCommandSource> ctx) {
         final Photographer p = requirePlayer(ctx);
+        ServerCommandSource src = ctx.getSource();
         if (p != null){
-            p.kill();
+            src.sendFeedback(render(getFormats().killConfirm, p.getGameProfile().getName()), false);
+            cm.submit(src.getName(), src, p::kill);
             return 1;
         }
         return 0;
@@ -423,8 +436,10 @@ public class SReplayCommand {
 
     public static int playerRespawn(CommandContext<ServerCommandSource> ctx) throws CommandSyntaxException {
         final Photographer p = requirePlayer(ctx);
+        ServerCommandSource src = ctx.getSource();
         if (p != null) {
-            p.reconnect();
+            src.sendFeedback(render(getFormats().killConfirm, p.getGameProfile().getName()), false);
+            cm.submit(src.getName(), src, p::reconnect);
             return 1;
         }
         return 0;

@@ -22,13 +22,12 @@ public class ConfirmationManager {
     }
 
     public synchronized void submit(String label, ServerCommandSource src, Runnable h){
-        ConfirmationEntry e = confirms.get(label);
+        final int code = random.nextInt(codeBound);
+        src.sendFeedback(TextRenderer.render(SReplayMod.getFormats().confirmingHint, Integer.toString(code)), false);
+        ConfirmationEntry e = confirms.put(label, new ConfirmationEntry(src, label, code, h));
         if (e != null){
             e.t.cancel();
         }
-        final int code = random.nextInt(codeBound);
-        src.sendFeedback(TextRenderer.render(SReplayMod.getFormats().confirmingHint, Integer.toString(code)), false);
-        confirms.put(label, new ConfirmationEntry(src, label, code, h));
     }
 
     public synchronized boolean confirm(String label, int code){

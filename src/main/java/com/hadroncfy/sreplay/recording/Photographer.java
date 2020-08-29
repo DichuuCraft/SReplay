@@ -53,6 +53,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     private final File outputDir;
     private final List<Entity> trackedPlayers = new ArrayList<>();
     private int currentWatchDistance;
+    private boolean userPaused = false;
 
     private String recordingFileName, saveFileName;
 
@@ -135,6 +136,8 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         recorder.start();
         lastTablistUpdateTime = System.currentTimeMillis();
 
+        userPaused = false;
+
         setHealth(20.0F);
         removed = false;
         trackedPlayers.clear();
@@ -201,17 +204,30 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     }
 
     private void updatePause(){
-        if (!recorder.isStopped() && rparam.autoPause){
-            final String name = getGameProfile().getName();
-            if (trackedPlayers.isEmpty() && !recorder.isRecordingPaused()){
+        if (!recorder.isStopped()){
+            if (userPaused){
                 recorder.pauseRecording();
-                server.getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().autoPaused, name), true);
             }
-            if (!trackedPlayers.isEmpty() && recorder.isRecordingPaused()){
+            else if (rparam.autoPause){
+                final String name = getGameProfile().getName();
+                if (trackedPlayers.isEmpty() && !recorder.isRecordingPaused()){
+                    recorder.pauseRecording();
+                    server.getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().autoPaused, name), true);
+                }
+                if (!trackedPlayers.isEmpty() && recorder.isRecordingPaused()){
+                    recorder.resumeRecording();
+                    server.getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().autoResumed, name), true);
+                }
+            }
+            else {
                 recorder.resumeRecording();
-                server.getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().autoResumed, name), true);
             }
         }
+    }
+
+    public void setPaused(boolean paused){
+        userPaused = paused;
+        updatePause();
     }
 
     private static String timeToString(long ms){
@@ -281,8 +297,8 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     }
 
     public CompletableFuture<Void> kill(boolean async) {
-        if (!recorder.isStopped()){
-            recorder.stop();
+        recorder.stop();
+        if (!recorder.hasSaved()){
             final File saveFile = new File(outputDir, getSaveName() + MCPR);
             CompletableFuture<Void> f = recorder.saveRecording(saveFile, new RecordingSaveProgressBar(server, saveFile.getName()))
             .thenRun(() -> {
