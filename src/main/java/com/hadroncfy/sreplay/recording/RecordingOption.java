@@ -47,6 +47,9 @@ public class RecordingOption {
     @Option(desc = "sreplay.param.pauseMarkers.desc")
     public boolean pauseMarkers = false;
 
+    @Option(desc = "sreplay.param.ignoreChat.desc")
+    public boolean ignoreChat = false;
+
     public static RecordingOption createDefaultRecordingParam(Config config, int watchDistance) {
         RecordingOption p = new RecordingOption();
         p.autoReconnect = config.autoReconnect;

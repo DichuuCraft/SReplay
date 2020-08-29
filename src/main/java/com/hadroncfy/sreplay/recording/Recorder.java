@@ -26,6 +26,7 @@ import net.minecraft.SharedConstants;
 import net.minecraft.network.NetworkState;
 import net.minecraft.network.Packet;
 import net.minecraft.network.packet.s2c.login.LoginSuccessS2CPacket;
+import net.minecraft.network.packet.s2c.play.ChatMessageS2CPacket;
 import net.minecraft.network.packet.s2c.play.DisconnectS2CPacket;
 import net.minecraft.network.packet.s2c.play.GameStateChangeS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerSpawnS2CPacket;
@@ -328,6 +329,9 @@ public class Recorder implements IPacketListener {
                 if (r == 1 || r == 2 || r == 7 || r == 8){
                     return;
                 }
+            }
+            if (param.ignoreChat && p instanceof ChatMessageS2CPacket){
+                return;
             }
             savePacket(p);
         }

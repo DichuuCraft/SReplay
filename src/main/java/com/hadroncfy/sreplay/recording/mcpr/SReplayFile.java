@@ -161,9 +161,10 @@ public class SReplayFile implements IReplayFile {
     private void updateProgress(){
         if (listener != null){
             float percent = (float)savedSize / (float)totalSize;
-            if ((int)percent != lastPercent){
+            int ip = (int)(100 * percent);
+            if (ip != lastPercent){
                 listener.onProgress(percent);
-                lastPercent = (int)percent;
+                lastPercent = ip;
             }
         }
     }
