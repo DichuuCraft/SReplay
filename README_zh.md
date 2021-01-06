@@ -10,7 +10,7 @@ ReplayMod服务端录制mod，通过使用类似于carpet的假人来录制。�
 目前支持1.14.4，对于新版本应该只需要修改gradle文件中的Minecraft版本和yarn mapping版本。
 
 ## 使用
-使用`/sreplay help`来获取一般用法帮助，`/sreplay help set <参数名>`来获取不同录像参数的说明。
+使用`/sreplay help`来获取一般用法帮助，`/sreplay help set <选项名>`来获取不同录像选项的说明。
 
 ## Configuration
 配置文件在`config/sreplay.json`，每次启动时如果文件不存在就会被创建。

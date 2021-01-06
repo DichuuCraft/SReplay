@@ -1,6 +1,8 @@
 package com.hadroncfy.sreplay.server;
 
 import java.io.File;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -27,8 +29,8 @@ public class HttpHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, FullHttpRequest msg) throws Exception {
-        final String path = msg.uri();
-        LOGGER.info("Got request " + path + " from " + ctx.channel().remoteAddress().toString());
+        String path = URLDecoder.decode(msg.uri(), StandardCharsets.UTF_8);
+        LOGGER.info("Got request {} from {}", path, ctx.channel().remoteAddress());
         server.removeExpiredFiles();
         final FileEntry fileEntry = server.getFile(path);
         if (fileEntry == null || !fileEntry.getFile().exists()){

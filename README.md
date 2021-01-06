@@ -13,7 +13,7 @@ Server-side recording mod for [ReplayMod](https://github.com/ReplayMod/ReplayMod
 Tested in Minecraft 1.14.4, should also work in later versions with only trivial modifications on the code (minecraft version and yarn mapping version of fabric-loom).
 
 ## Use
-Use `/sreplay help` to get general usage, and `/sreplay help set <parametre name>` to get help with the specified recording parametre.
+Use `/sreplay help` to get general usage, and `/sreplay help set <option name>` to get help with the specified recording option.
 
 ## Configuration
 Cnofiguration file is `config/sreplay.json`, it will be created each time start the mod if not exist.

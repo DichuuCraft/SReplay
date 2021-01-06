@@ -152,7 +152,7 @@ public class Formats {
         green("- marker list [页码]").append(white("列出所有已添加的标记")),
         green("- marker add [标记名]").append(white("在当前位置添加一个标记")),
         green("- marker remove [标记序号]").append(white("删除一个标记")),
-        green("- set <参数名> [参数值]").append(white("设置或获取相应的参数，查看详情请使用")).append(green("/sreplay help set <参数名>")),
+        green("- set <选项名> [参数值]").append(white("设置或获取相应的录像选项的值，查看详情请使用")).append(green("/sreplay help set <选项名>")),
         white(""),
         green("/sreplay list [页码]").append(white("列出所有已录制的文件")),
         green("/sreplay delete <文件名>").append(white("删除给定的录像文件。需要用")).append(green("/sreplay confirm <确认码>")).append(white("来确认")),

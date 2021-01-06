@@ -94,14 +94,14 @@ public class SReplayFile implements IReplayFile {
         data.fileFormatVersion = Metadata.CURRENT_FILE_FORMAT_VERSION;
         data.protocol = SharedConstants.getGameVersion().getProtocolVersion();
 
-        try (Writer writer = new OutputStreamWriter(new BufferedOutputStream(new FileOutputStream(metaFile)), StandardCharsets.UTF_8)){
+        try (Writer writer = new OutputStreamWriter(new FileOutputStream(metaFile), StandardCharsets.UTF_8)){
             writer.write(META_GSON.toJson(data));
         }
     }
 
     @Override
     public void saveMarkers(List<Marker> markers) throws IOException {
-        try (Writer writer = new OutputStreamWriter(new BufferedOutputStream(new FileOutputStream(markerFile)), StandardCharsets.UTF_8)){
+        try (Writer writer = new OutputStreamWriter(new FileOutputStream(markerFile), StandardCharsets.UTF_8)){
             writer.write(MARKER_GSON.toJson(markers));
         }
     }
