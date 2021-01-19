@@ -10,15 +10,18 @@ import java.util.concurrent.CompletableFuture;
 import com.hadroncfy.sreplay.SReplayMod;
 import com.hadroncfy.sreplay.config.TextRenderer;
 import com.hadroncfy.sreplay.mixin.PlayerManagerAccessor;
+import com.hadroncfy.sreplay.mixin.ThreadedAnvilChunkStorageAccessor;
 import com.hadroncfy.sreplay.recording.param.OptionManager;
 import com.mojang.authlib.GameProfile;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.network.NetworkSide;
+import net.minecraft.network.Packet;
 import net.minecraft.network.packet.s2c.play.ChunkLoadDistanceS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerListS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerRespawnS2CPacket;
+import net.minecraft.network.packet.s2c.play.UnloadChunkS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerListS2CPacket.Action;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.ServerTask;
@@ -30,6 +33,8 @@ import net.minecraft.text.LiteralText;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.math.ChunkPos;
+import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
 import net.minecraft.world.dimension.DimensionType;
@@ -112,10 +117,31 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     }
 
     private void setWatchDistance(int distance){
-        ServerChunkManager chunkManager = getServerWorld().getChunkManager();
         recorder.onPacket(new ChunkLoadDistanceS2CPacket(distance));
-        chunkManager.updateCameraPosition(this);
+        this.reloadChunks(currentWatchDistance, rparam.watchDistance);
         currentWatchDistance = rparam.watchDistance;
+    }
+
+    private static int getChebyshevDistance(ChunkPos pos, int x, int z) {
+        int i = pos.x - x;
+        int j = pos.z - z;
+        return Math.max(Math.abs(i), Math.abs(j));
+     }
+
+    private void reloadChunks(int oldDistance, int newDistance){
+        ServerChunkManager chunkManager = getServerWorld().getChunkManager();
+        ThreadedAnvilChunkStorageAccessor acc = (ThreadedAnvilChunkStorageAccessor)chunkManager.threadedAnvilChunkStorage;
+        ChunkSectionPos pos = this.getCameraPosition();
+        int x0 = pos.getSectionX();
+        int z0 = pos.getSectionZ();
+        int r = oldDistance > newDistance ? oldDistance : newDistance;
+        for (int x = x0 - r; x <= x0 + r; x++){
+            for (int z = z0 - r; z <= z0 + r; z++){
+                ChunkPos pos1 = new ChunkPos(x, z);
+                int d = getChebyshevDistance(pos1, x0, z0);
+                acc.sendWatchPackets2(this, pos1, new Packet[2], d <= oldDistance && d > newDistance, d > oldDistance && d <= newDistance);
+            }
+        }
     }
 
     public int getCurrentWatchDistance(){
@@ -145,6 +171,13 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         syncParams();
         interactionManager.setGameMode(MODE);
         getServerWorld().getChunkManager().updateCameraPosition(this);
+
+        int d = this.server.getPlayerManager().getViewDistance();
+        if (d != this.rparam.watchDistance){
+            recorder.onPacket(new ChunkLoadDistanceS2CPacket(this.rparam.watchDistance));
+            this.reloadChunks(d, this.rparam.watchDistance);
+            this.currentWatchDistance = this.rparam.watchDistance;
+        }
     }
 
     public void syncParams(){

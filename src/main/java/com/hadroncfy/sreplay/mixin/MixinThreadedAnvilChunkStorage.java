@@ -36,32 +36,15 @@ public abstract class MixinThreadedAnvilChunkStorage {
     private int getWatchDistance$lambda0$setViewDistance(ThreadedAnvilChunkStorage cela, ChunkPos pos, int previousViewDistance, Packet<?>[] packets, ServerPlayerEntity player){
         return getRealViewDistance(player, watchDistance);
     }
-
+    
     @Redirect(method = "updateCameraPosition", at = @At(
-        value = "sreplay_MultipleOrdinalField",
-        target = "Lnet/minecraft/server/world/ThreadedAnvilChunkStorage;watchDistance:I",
-        args = {
-            "ordinals=2, 3, 6, 8..11"
-        }
+        value = "FIELD",
+        target = "Lnet/minecraft/server/world/ThreadedAnvilChunkStorage;watchDistance:I"
     ))
-    private int getPreviousWatchDistance(ThreadedAnvilChunkStorage cela, ServerPlayerEntity player){
+    private int getCurrentWatchDistance(ThreadedAnvilChunkStorage cela, ServerPlayerEntity player) {
         if (player instanceof Photographer){
             return ((Photographer)player).getCurrentWatchDistance();
         }
-        return watchDistance;
-    }
-
-    @Redirect(method = "updateCameraPosition", at = @At(
-        value = "sreplay_MultipleOrdinalField",
-        target = "Lnet/minecraft/server/world/ThreadedAnvilChunkStorage;watchDistance:I",
-        args = {
-            "ordinals=4, 5, 7, 12..15"
-        }
-    ))
-    private int getCurrentWatchDistance(ThreadedAnvilChunkStorage cela, ServerPlayerEntity player){
-        if (player instanceof Photographer){
-            return ((Photographer)player).getRecordingParam().watchDistance;
-        }
-        return watchDistance;
+        return this.watchDistance;
     }
 }

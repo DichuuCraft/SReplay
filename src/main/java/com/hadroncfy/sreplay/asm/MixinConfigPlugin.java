@@ -9,6 +9,7 @@ import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 import org.spongepowered.asm.mixin.injection.InjectionPoint;
 
+/// Not used currently
 public class MixinConfigPlugin implements IMixinConfigPlugin {
 
     @Override

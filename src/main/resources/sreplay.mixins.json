@@ -22,6 +22,5 @@
   "injectors": {
     "defaultRequire": 1
   },
-  "plugin": "com.hadroncfy.sreplay.asm.MixinConfigPlugin",
   "refmap": "sreplay-refmap.json"
 }
