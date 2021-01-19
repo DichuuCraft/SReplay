@@ -23,11 +23,16 @@ import com.hadroncfy.sreplay.recording.mcpr.SReplayFile;
 import com.mojang.authlib.GameProfile;
 
 import net.minecraft.SharedConstants;
+import net.minecraft.entity.EntityType;
 import net.minecraft.network.NetworkState;
 import net.minecraft.network.Packet;
 import net.minecraft.network.packet.s2c.login.LoginSuccessS2CPacket;
 import net.minecraft.network.packet.s2c.play.ChatMessageS2CPacket;
 import net.minecraft.network.packet.s2c.play.DisconnectS2CPacket;
+import net.minecraft.network.packet.s2c.play.EntityS2CPacket;
+import net.minecraft.network.packet.s2c.play.EntitySetHeadYawS2CPacket;
+import net.minecraft.network.packet.s2c.play.EntitySpawnS2CPacket;
+import net.minecraft.network.packet.s2c.play.EntityVelocityUpdateS2CPacket;
 import net.minecraft.network.packet.s2c.play.GameStateChangeS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerSpawnS2CPacket;
 import net.minecraft.network.packet.s2c.play.WorldTimeUpdateS2CPacket;
@@ -108,7 +113,7 @@ public class Recorder implements IPacketListener {
     public long getRecordedTime(){
         final long base;
         if (followTick){
-            base = (server.getTicks() - startTick) * 50;
+            base = (server.getTicks() - startTick) * 50L;
         }
         else {
             base = System.currentTimeMillis() - startTime;

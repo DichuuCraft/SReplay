@@ -11,5 +11,6 @@
     "sreplay.param.dayTime.desc": "锁定录像的世界时间为该参数值，-1代表不锁定。锁定时间后可停止昼夜循环，在渲染长时间录像时能提高渲染的效果",
     "sreplay.param.forcedWeather.desc": "锁定录像中的天气。",
     "sreplay.param.pauseMarkers.desc": "在时间轴上自动暂停的位置添加标记",
-    "sreplay.param.ignoreChat.desc": "忽略聊天信息包，可减小录像文件大小"
+    "sreplay.param.ignoreChat.desc": "忽略聊天信息包，可减小录像文件大小",
+    "sreplay.param.ignoreItems.desc": "忽略掉落物"
 }

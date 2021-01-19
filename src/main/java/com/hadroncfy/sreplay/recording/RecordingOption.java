@@ -50,6 +50,9 @@ public class RecordingOption {
     @Option(desc = "sreplay.param.ignoreChat.desc")
     public boolean ignoreChat = false;
 
+    @Option(desc = "sreplay.param.ignoreItems.desc")
+    public boolean ignoreItems = false;
+
     public static RecordingOption createDefaultRecordingParam(Config config, int watchDistance) {
         RecordingOption p = new RecordingOption();
         p.autoReconnect = config.autoReconnect;

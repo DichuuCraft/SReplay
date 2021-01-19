@@ -37,6 +37,7 @@ import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
+import net.minecraft.world.World;
 import net.minecraft.world.dimension.DimensionType;
 
 import org.apache.logging.log4j.LogManager;
@@ -62,61 +63,66 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
 
     private String recordingFileName, saveFileName;
 
-    public Photographer(MinecraftServer server, ServerWorld world, GameProfile profile, ServerPlayerInteractionManager im, File outputDir, RecordingOption param){
+    public Photographer(MinecraftServer server, ServerWorld world, GameProfile profile,
+            ServerPlayerInteractionManager im, File outputDir, RecordingOption param) {
         super(server, world, profile, im);
         currentWatchDistance = server.getPlayerManager().getViewDistance();
         rparam = param;
         this.outputDir = outputDir;
     }
 
-    public Photographer(MinecraftServer server, ServerWorld world, GameProfile profile, ServerPlayerInteractionManager im, File outputDir){
+    public Photographer(MinecraftServer server, ServerWorld world, GameProfile profile,
+            ServerPlayerInteractionManager im, File outputDir) {
         this(server, world, profile, im, outputDir, new RecordingOption());
-    } 
+    }
 
-    public static Photographer create(String name, MinecraftServer server, DimensionType dim, Vec3d pos, File outputDir, RecordingOption param){
+    public static Photographer create(String name, MinecraftServer server, DimensionType dim, Vec3d pos, File outputDir,
+            RecordingOption param) {
         GameProfile profile = new GameProfile(PlayerEntity.getOfflinePlayerUuid(name), name);
         ServerWorld world = server.getWorld(dim);
         ServerPlayerInteractionManager im = new ServerPlayerInteractionManager(world);
         Photographer ret = new Photographer(server, world, profile, im, outputDir, param);
         ret.updatePosition(pos.x, pos.y, pos.z);
-        ((PlayerManagerAccessor)server.getPlayerManager()).getSaveHandler().savePlayerData(ret);
+        ((PlayerManagerAccessor) server.getPlayerManager()).getSaveHandler().savePlayerData(ret);
         return ret;
     }
 
-    public static Photographer create(String name, MinecraftServer server, DimensionType dim, Vec3d pos, File outputDir){
-        return create(name, server, dim, pos, outputDir, RecordingOption.createDefaultRecordingParam(SReplayMod.getConfig(), server.getPlayerManager().getViewDistance()));
+    public static Photographer create(String name, MinecraftServer server, DimensionType dim, Vec3d pos,
+            File outputDir) {
+        return create(name, server, dim, pos, outputDir, RecordingOption
+                .createDefaultRecordingParam(SReplayMod.getConfig(), server.getPlayerManager().getViewDistance()));
     }
 
-    private boolean checkForRecordingFileDupe(String name){
-        for (Photographer p: listFakes(getServer())){
-            if (p.saveFileName.equals(name) && p.outputDir.equals(outputDir)){
+    private boolean checkForRecordingFileDupe(String name) {
+        for (Photographer p : listFakes(getServer())) {
+            if (p.saveFileName.equals(name) && p.outputDir.equals(outputDir)) {
                 return true;
             }
         }
         return false;
     }
 
-    private String genRecordingFileName(String name){
-        if (!checkForRecordingFileDupe(name)){
+    private String genRecordingFileName(String name) {
+        if (!checkForRecordingFileDupe(name)) {
             return name;
-        }
-        else {
+        } else {
             int i = 0;
-            while (checkForRecordingFileDupe(name + "_" + i++));
+            while (checkForRecordingFileDupe(name + "_" + i++))
+                ;
             return name + "_" + i;
         }
     }
 
-    public String getSaveName(){
+    public String getSaveName() {
         return reconnectCount == 0 ? saveFileName : saveFileName + "_" + reconnectCount;
     }
-    
-    public void setSaveName(String name){
+
+    public void setSaveName(String name) {
         reconnectCount = 0;
         saveFileName = name;
     }
 
-    private void setWatchDistance(int distance){
+    private void setWatchDistance(int distance) {
         recorder.onPacket(new ChunkLoadDistanceS2CPacket(distance));
         this.reloadChunks(currentWatchDistance, rparam.watchDistance);
         currentWatchDistance = rparam.watchDistance;
@@ -126,38 +132,39 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         int i = pos.x - x;
         int j = pos.z - z;
         return Math.max(Math.abs(i), Math.abs(j));
-     }
+    }
 
-    private void reloadChunks(int oldDistance, int newDistance){
+    private void reloadChunks(int oldDistance, int newDistance) {
         ServerChunkManager chunkManager = getServerWorld().getChunkManager();
-        ThreadedAnvilChunkStorageAccessor acc = (ThreadedAnvilChunkStorageAccessor)chunkManager.threadedAnvilChunkStorage;
+        ThreadedAnvilChunkStorageAccessor acc = (ThreadedAnvilChunkStorageAccessor) chunkManager.threadedAnvilChunkStorage;
         ChunkSectionPos pos = this.getCameraPosition();
         int x0 = pos.getSectionX();
         int z0 = pos.getSectionZ();
         int r = oldDistance > newDistance ? oldDistance : newDistance;
-        for (int x = x0 - r; x <= x0 + r; x++){
-            for (int z = z0 - r; z <= z0 + r; z++){
+        for (int x = x0 - r; x <= x0 + r; x++) {
+            for (int z = z0 - r; z <= z0 + r; z++) {
                 ChunkPos pos1 = new ChunkPos(x, z);
                 int d = getChebyshevDistance(pos1, x0, z0);
-                acc.sendWatchPackets2(this, pos1, new Packet[2], d <= oldDistance && d > newDistance, d > oldDistance && d <= newDistance);
+                acc.sendWatchPackets2(this, pos1, new Packet[2], d <= oldDistance && d > newDistance,
+                        d > oldDistance && d <= newDistance);
             }
         }
     }
 
-    public int getCurrentWatchDistance(){
+    public int getCurrentWatchDistance() {
         return currentWatchDistance;
     }
 
-    private void connect() throws IOException{
+    private void connect() throws IOException {
         recordingFileName = genRecordingFileName(getSaveName());
-        
+
         final File raw = new File(outputDir, RAW_SUBDIR);
-        if (!raw.exists()){
+        if (!raw.exists()) {
             raw.mkdirs();
         }
-        recorder = new Recorder(getGameProfile(), server, this::getWeather, new File(raw, recordingFileName), rparam);
+        recorder = new Recorder(getGameProfile(), server, new ViewImpl(), new File(raw, recordingFileName), rparam);
         connection = new HackyClientConnection(NetworkSide.CLIENTBOUND, recorder);
-        
+
         recorder.setOnSizeLimitExceededListener(this);
         recorder.start();
         lastTablistUpdateTime = System.currentTimeMillis();
@@ -173,18 +180,18 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         getServerWorld().getChunkManager().updateCameraPosition(this);
 
         int d = this.server.getPlayerManager().getViewDistance();
-        if (d != this.rparam.watchDistance){
+        if (d != this.rparam.watchDistance) {
             recorder.onPacket(new ChunkLoadDistanceS2CPacket(this.rparam.watchDistance));
             this.reloadChunks(d, this.rparam.watchDistance);
             this.currentWatchDistance = this.rparam.watchDistance;
         }
     }
 
-    public void syncParams(){
-        if (!recorder.isStopped()){
+    public void syncParams() {
+        if (!recorder.isStopped()) {
             recorder.syncParam();
             updatePause();
-            if (currentWatchDistance != rparam.watchDistance){
+            if (currentWatchDistance != rparam.watchDistance) {
                 setWatchDistance(rparam.watchDistance);
             }
         }
@@ -198,30 +205,30 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
 
     @Override
     public void tick() {
-        if (getServer().getTicks() % 10 == 0){
+        if (getServer().getTicks() % 10 == 0) {
             networkHandler.syncWithPlayerPosition();
             getServerWorld().getChunkManager().updateCameraPosition(this);
         }
         super.tick();
         method_14226();// playerTick
-        
+
         final long now = System.currentTimeMillis();
-        if (!recorder.isStopped() && now - lastTablistUpdateTime >= 1000){
+        if (!recorder.isStopped() && now - lastTablistUpdateTime >= 1000) {
             lastTablistUpdateTime = now;
-            if (!recorder.isSoftPaused()){
+            if (!recorder.isSoftPaused()) {
                 server.getPlayerManager().sendToAll(new PlayerListS2CPacket(Action.UPDATE_DISPLAY_NAME, this));
             }
         }
     }
 
-    private static boolean isRealPlayer(Entity entity){
+    private static boolean isRealPlayer(Entity entity) {
         return entity.getClass() == ServerPlayerEntity.class;
     }
 
     @Override
     public void onStartedTracking(Entity entity) {
         super.onStartedTracking(entity);
-        if (isRealPlayer(entity)){
+        if (isRealPlayer(entity)) {
             trackedPlayers.add(entity);
             updatePause();
         }
@@ -230,78 +237,78 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     @Override
     public void onStoppedTracking(Entity entity) {
         super.onStoppedTracking(entity);
-        if (isRealPlayer(entity)){
+        if (isRealPlayer(entity)) {
             trackedPlayers.remove(entity);
             updatePause();
         }
     }
 
-    private void updatePause(){
-        if (!recorder.isStopped()){
-            if (userPaused){
+    private void updatePause() {
+        if (!recorder.isStopped()) {
+            if (userPaused) {
                 recorder.pauseRecording();
-            }
-            else if (rparam.autoPause){
+            } else if (rparam.autoPause) {
                 final String name = getGameProfile().getName();
-                if (trackedPlayers.isEmpty() && !recorder.isRecordingPaused()){
+                if (trackedPlayers.isEmpty() && !recorder.isRecordingPaused()) {
                     recorder.pauseRecording();
-                    server.getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().autoPaused, name), true);
+                    server.getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().autoPaused, name),
+                            true);
                 }
-                if (!trackedPlayers.isEmpty() && recorder.isRecordingPaused()){
+                if (!trackedPlayers.isEmpty() && recorder.isRecordingPaused()) {
                     recorder.resumeRecording();
-                    server.getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().autoResumed, name), true);
+                    server.getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().autoResumed, name),
+                            true);
                 }
-            }
-            else {
+            } else {
                 recorder.resumeRecording();
             }
         }
     }
 
-    public void setPaused(boolean paused){
+    public void setPaused(boolean paused) {
         userPaused = paused;
         updatePause();
     }
 
-    private static String timeToString(long ms){
+    private static String timeToString(long ms) {
         final long sec = ms % 60;
         ms /= 60;
         final long min = ms % 60;
         ms /= 60;
         final long hour = ms;
-        if (hour == 0){
+        if (hour == 0) {
             return String.format("%d:%02d", min, sec);
-        }
-        else {
+        } else {
             return String.format("%d:%02d:%02d", hour, min, sec);
         }
     }
 
     @Override
     public Text method_14206() {
-        if (recorder.isStopped()){
+        if (recorder.isStopped()) {
             return null;
         }
         long duration = recorder.getRecordedTime() / 1000;
 
         String time = timeToString(duration);
-        if (rparam.timeLimit != -1){
+        if (rparam.timeLimit != -1) {
             time += "/" + timeToString(rparam.timeLimit);
         }
 
         String size = String.format("%.2f", recorder.getRecordedBytes() / 1024F / 1024F) + "M";
-        if (rparam.sizeLimit != -1){
+        if (rparam.sizeLimit != -1) {
             size += "/" + rparam.sizeLimit + "M";
         }
-        Text ret = new LiteralText(getGameProfile().getName()).setStyle(new Style().setItalic(true).setColor(Formatting.AQUA));
+        Text ret = new LiteralText(getGameProfile().getName())
+                .setStyle(new Style().setItalic(true).setColor(Formatting.AQUA));
 
         ret.append(new LiteralText(" " + time).setStyle(new Style().setItalic(false).setColor(Formatting.GREEN)))
-            .append(new LiteralText(" " + size).setStyle(new Style().setItalic(false).setColor(Formatting.GREEN)));
+                .append(new LiteralText(" " + size).setStyle(new Style().setItalic(false).setColor(Formatting.GREEN)));
         return ret;
     }
 
     public void tp(DimensionType dim, double x, double y, double z) {
-        if (dimension != dim){
+        if (dimension != dim) {
             ServerWorld oldMonde = server.getWorld(dimension), nouveau = server.getWorld(dim);
             oldMonde.removePlayer(this);
             removed = false;
@@ -314,37 +321,39 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         requestTeleport(x, y, z);
     }
 
-    public Recorder getRecorder(){
+    public Recorder getRecorder() {
         return recorder;
     }
 
     @Override
-    public void kill(){
+    public void kill() {
         kill(true);
     }
 
-    private void postKill(){
-        if (networkHandler != null){
+    private void postKill() {
+        if (networkHandler != null) {
             networkHandler.onDisconnected(new LiteralText("Killed"));
         }
     }
 
     public CompletableFuture<Void> kill(boolean async) {
         recorder.stop();
-        if (!recorder.hasSaved()){
+        if (!recorder.hasSaved()) {
             final File saveFile = new File(outputDir, getSaveName() + MCPR);
-            CompletableFuture<Void> f = recorder.saveRecording(saveFile, new RecordingSaveProgressBar(server, saveFile.getName()))
-            .thenRun(() -> {
-                server.getPlayerManager().broadcastChatMessage(
-                    TextRenderer.render(SReplayMod.getFormats().savedRecordingFile, getGameProfile().getName(), saveFile.getName()), false);
-            })
-            .exceptionally(exception -> {
-                exception.printStackTrace();
-                server.getPlayerManager().broadcastChatMessage(
-                    TextRenderer.render(SReplayMod.getFormats().failedToSaveRecordingFile, getGameProfile().getName(), exception.toString()), false);
-                return null;
-            });
-            if (!async){
+            CompletableFuture<Void> f = recorder
+                    .saveRecording(saveFile, new RecordingSaveProgressBar(server, saveFile.getName())).thenRun(() -> {
+                        server.getPlayerManager()
+                                .broadcastChatMessage(TextRenderer.render(SReplayMod.getFormats().savedRecordingFile,
+                                        getGameProfile().getName(), saveFile.getName()), false);
+                    }).exceptionally(exception -> {
+                        exception.printStackTrace();
+                        server.getPlayerManager().broadcastChatMessage(
+                                TextRenderer.render(SReplayMod.getFormats().failedToSaveRecordingFile,
+                                        getGameProfile().getName(), exception.toString()),
+                                false);
+                        return null;
+                    });
+            if (!async) {
                 f.join();
             }
         }
@@ -357,95 +366,107 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     }
 
     public void onSoftPause() {
-        if (!recorder.isStopped()){
+        if (!recorder.isStopped()) {
             recorder.setSoftPaused();
-        }        
+        }
     }
 
-    public void reconnect(){
+    public void reconnect() {
         kill(true).thenRun(() -> {
             reconnectCount++;
             try {
                 connect();
             } catch (IOException e) {
-                server.getPlayerManager().broadcastChatMessage(TextRenderer.render(SReplayMod.getFormats().failedToStartRecording, getGameProfile().getName()), true);
+                server.getPlayerManager().broadcastChatMessage(
+                        TextRenderer.render(SReplayMod.getFormats().failedToStartRecording, getGameProfile().getName()),
+                        true);
                 e.printStackTrace();
             }
         });
     }
 
-    private void executeServerTask(Runnable r){
+    private void executeServerTask(Runnable r) {
         server.send(new ServerTask(server.getTicks(), r));
     }
 
-    private void executeNow(Runnable r){
+    private void executeNow(Runnable r) {
         r.run();
     }
 
     @Override
     public void onSizeLimitExceeded(long size) {
-        if (rparam.autoReconnect){
+        if (rparam.autoReconnect) {
             executeServerTask(this::reconnect);
-        }
-        else {
+        } else {
             executeServerTask(this::kill);
         }
     }
 
-    public RecordingOption getRecordingParam(){
+    public RecordingOption getRecordingParam() {
         return rparam;
+    }
+
+    public boolean isItemDisabled(){
+        return this.rparam.ignoreItems;
     }
 
     public static void killAllFakes(MinecraftServer server, boolean async) {
         listFakes(server).forEach(p -> p.kill(async));
     }
 
-    public static Collection<Photographer> listFakes(MinecraftServer server){
+    public static Collection<Photographer> listFakes(MinecraftServer server) {
         Collection<Photographer> ret = new ArrayList<>();
-        for (ServerPlayerEntity player: server.getPlayerManager().getPlayerList()){
-            if (player instanceof Photographer){
+        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+            if (player instanceof Photographer) {
                 ret.add((Photographer) player);
             }
         }
         return ret;
     }
 
-    public static Photographer getFake(MinecraftServer server, String name){
+    public static Photographer getFake(MinecraftServer server, String name) {
         ServerPlayerEntity player = server.getPlayerManager().getPlayer(name);
-        if (player instanceof Photographer){
+        if (player instanceof Photographer) {
             return (Photographer) player;
         }
         return null;
     }
 
-    public static boolean checkForSaveFileDupe(MinecraftServer server, File outputDir, String name){
-        if (new File(outputDir, name + MCPR).exists()){
+    public static boolean checkForSaveFileDupe(MinecraftServer server, File outputDir, String name) {
+        if (new File(outputDir, name + MCPR).exists()) {
             return true;
         }
-        for (Photographer p: listFakes(server)){
-            if (p.outputDir.equals(outputDir) && p.getSaveName().equals(name)){
+        for (Photographer p : listFakes(server)) {
+            if (p.outputDir.equals(outputDir) && p.getSaveName().equals(name)) {
                 return true;
             }
         }
         return false;
     }
 
-    public static int getRealViewDistance(ServerPlayerEntity player, int watchDistance){
-        if (player instanceof Photographer){
-            return ((Photographer)player).currentWatchDistance;
-        }
-        else {
+    public static int getRealViewDistance(ServerPlayerEntity player, int watchDistance) {
+        if (player instanceof Photographer) {
+            return ((Photographer) player).currentWatchDistance;
+        } else {
             return watchDistance;
         }
     }
 
-    private ForcedWeather getWeather() {
-        if (world.isThundering()){
-            return ForcedWeather.THUNDER;
+    private class ViewImpl implements WeatherView {
+
+        @Override
+        public ForcedWeather getWeather() {
+            if (world.isThundering()) {
+                return ForcedWeather.THUNDER;
+            } else if (world.isRaining()) {
+                return ForcedWeather.RAIN;
+            }
+            return ForcedWeather.CLEAR;
         }
-        else if (world.isRaining()){
-            return ForcedWeather.RAIN;
+
+        @Override
+        public World getWorld() {
+            return Photographer.this.world;
         }
-        return ForcedWeather.CLEAR;
     }
 }
