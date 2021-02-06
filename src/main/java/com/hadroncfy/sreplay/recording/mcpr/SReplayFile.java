@@ -121,7 +121,7 @@ public class SReplayFile implements IReplayFile {
     }
 
     @Override
-    public void closeAndSave(File file, ProgressBar listener) throws IOException {
+    public synchronized void closeAndSave(File file, ProgressBar listener) throws IOException {
         packetStream.close();
         this.listener = listener;
 

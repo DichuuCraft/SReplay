@@ -262,9 +262,7 @@ public class Recorder implements IPacketListener {
                     e.printStackTrace();
                 }
                 try {
-                    synchronized (replayFile) {
-                        replayFile.closeAndSave(dest, bar);
-                    }
+                    replayFile.closeAndSave(dest, bar);
                 }
                 catch(IOException e){
                     e.printStackTrace();

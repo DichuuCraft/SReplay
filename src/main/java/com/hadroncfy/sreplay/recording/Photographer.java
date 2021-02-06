@@ -21,7 +21,6 @@ import net.minecraft.network.Packet;
 import net.minecraft.network.packet.s2c.play.ChunkLoadDistanceS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerListS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerRespawnS2CPacket;
-import net.minecraft.network.packet.s2c.play.UnloadChunkS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerListS2CPacket.Action;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.ServerTask;
@@ -37,7 +36,6 @@ import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.GameMode;
-import net.minecraft.world.World;
 import net.minecraft.world.dimension.DimensionType;
 
 import org.apache.logging.log4j.LogManager;
@@ -162,7 +160,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         if (!raw.exists()) {
             raw.mkdirs();
         }
-        recorder = new Recorder(getGameProfile(), server, new ViewImpl(), new File(raw, recordingFileName), rparam);
+        recorder = new Recorder(getGameProfile(), server, this::getWeather, new File(raw, recordingFileName), rparam);
         connection = new HackyClientConnection(NetworkSide.CLIENTBOUND, recorder);
 
         recorder.setOnSizeLimitExceededListener(this);
@@ -452,21 +450,12 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         }
     }
 
-    private class ViewImpl implements WeatherView {
-
-        @Override
-        public ForcedWeather getWeather() {
-            if (world.isThundering()) {
-                return ForcedWeather.THUNDER;
-            } else if (world.isRaining()) {
-                return ForcedWeather.RAIN;
-            }
-            return ForcedWeather.CLEAR;
+    private ForcedWeather getWeather() {
+        if (world.isThundering()) {
+            return ForcedWeather.THUNDER;
+        } else if (world.isRaining()) {
+            return ForcedWeather.RAIN;
         }
-
-        @Override
-        public World getWorld() {
-            return Photographer.this.world;
-        }
+        return ForcedWeather.CLEAR;
     }
 }
