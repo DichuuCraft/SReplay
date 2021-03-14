@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import com.hadroncfy.sreplay.SReplayMod;
@@ -16,6 +17,7 @@ import com.mojang.authlib.GameProfile;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.network.MessageType;
 import net.minecraft.network.NetworkSide;
 import net.minecraft.network.Packet;
 import net.minecraft.network.packet.s2c.play.ChunkLoadDistanceS2CPacket;
@@ -29,19 +31,25 @@ import net.minecraft.server.network.ServerPlayerInteractionManager;
 import net.minecraft.server.world.ServerChunkManager;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.LiteralText;
+import net.minecraft.text.MutableText;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.util.registry.Registry;
+import net.minecraft.util.registry.RegistryKey;
 import net.minecraft.world.GameMode;
+import net.minecraft.world.World;
+import net.minecraft.world.biome.source.BiomeAccess;
 import net.minecraft.world.dimension.DimensionType;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import static com.hadroncfy.sreplay.config.TextRenderer.render;
+import static com.hadroncfy.sreplay.command.SReplayCommand.getSenderUUID;
 
 public class Photographer extends ServerPlayerEntity implements ISizeLimitExceededListener {
     public static final String MCPR = ".mcpr";
@@ -49,6 +57,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     private static final String RAW_SUBDIR = "raw";
     private static final GameMode MODE = GameMode.SPECTATOR;
     private static final Logger LOGGER = LogManager.getLogger();
+    private static final UUID NIL = new UUID(0, 0);
     private final RecordingOption rparam;
     private int reconnectCount = 0;
     private long lastTablistUpdateTime;
@@ -74,7 +83,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         this(server, world, profile, im, outputDir, new RecordingOption());
     }
 
-    public static Photographer create(String name, MinecraftServer server, DimensionType dim, Vec3d pos, File outputDir,
+    public static Photographer create(String name, MinecraftServer server, RegistryKey<World> dim, Vec3d pos, File outputDir,
             RecordingOption param) {
         GameProfile profile = new GameProfile(PlayerEntity.getOfflinePlayerUuid(name), name);
         ServerWorld world = server.getWorld(dim);
@@ -85,7 +94,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         return ret;
     }
 
-    public static Photographer create(String name, MinecraftServer server, DimensionType dim, Vec3d pos,
+    public static Photographer create(String name, MinecraftServer server, RegistryKey<World> dim, Vec3d pos,
             File outputDir) {
         return create(name, server, dim, pos, outputDir, RecordingOption
                 .createDefaultRecordingParam(SReplayMod.getConfig(), server.getPlayerManager().getViewDistance()));
@@ -174,7 +183,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         trackedPlayers.clear();
         server.getPlayerManager().onPlayerConnect(connection, this);
         syncParams();
-        interactionManager.setGameMode(MODE);
+        interactionManager.method_30118(MODE);// XXX: is this correct?
         getServerWorld().getChunkManager().updateCameraPosition(this);
 
         int d = this.server.getPlayerManager().getViewDistance();
@@ -208,7 +217,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
             getServerWorld().getChunkManager().updateCameraPosition(this);
         }
         super.tick();
-        method_14226();// playerTick
+        super.playerTick();
 
         final long now = System.currentTimeMillis();
         if (!recorder.isStopped() && now - lastTablistUpdateTime >= 1000) {
@@ -249,13 +258,11 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
                 final String name = getGameProfile().getName();
                 if (trackedPlayers.isEmpty() && !recorder.isRecordingPaused()) {
                     recorder.pauseRecording();
-                    server.getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().autoPaused, name),
-                            true);
+                    server.getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().autoPaused, name), MessageType.GAME_INFO, NIL);
                 }
                 if (!trackedPlayers.isEmpty() && recorder.isRecordingPaused()) {
                     recorder.resumeRecording();
-                    server.getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().autoResumed, name),
-                            true);
+                    server.getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().autoResumed, name), MessageType.GAME_INFO, NIL);
                 }
             } else {
                 recorder.resumeRecording();
@@ -282,7 +289,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     }
 
     @Override
-    public Text method_14206() {
+    public Text getPlayerListName() {
         if (recorder.isStopped()) {
             return null;
         }
@@ -297,24 +304,24 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         if (rparam.sizeLimit != -1) {
             size += "/" + rparam.sizeLimit + "M";
         }
-        Text ret = new LiteralText(getGameProfile().getName())
-                .setStyle(new Style().setItalic(true).setColor(Formatting.AQUA));
+        MutableText ret = new LiteralText(getGameProfile().getName())
+                .setStyle(Style.EMPTY.withItalic(true).withColor(Formatting.AQUA));
 
-        ret.append(new LiteralText(" " + time).setStyle(new Style().setItalic(false).setColor(Formatting.GREEN)))
-                .append(new LiteralText(" " + size).setStyle(new Style().setItalic(false).setColor(Formatting.GREEN)));
+        ret.append(new LiteralText(" " + time).setStyle(Style.EMPTY.withItalic(false).withColor(Formatting.GREEN)))
+                .append(new LiteralText(" " + size).setStyle(Style.EMPTY.withItalic(false).withColor(Formatting.GREEN)));
         return ret;
     }
 
-    public void tp(DimensionType dim, double x, double y, double z) {
-        if (dimension != dim) {
-            ServerWorld oldMonde = server.getWorld(dimension), nouveau = server.getWorld(dim);
+    public void tp(RegistryKey<World> dim, double x, double y, double z) {
+        if (!this.getServerWorld().getRegistryKey().equals(dim)) {
+            ServerWorld oldMonde = server.getWorld(this.getServerWorld().getRegistryKey()), nouveau = server.getWorld(dim);
             oldMonde.removePlayer(this);
             removed = false;
             setWorld(nouveau);
             server.getPlayerManager().sendWorldInfo(this, nouveau);
             interactionManager.setWorld(nouveau);
-            networkHandler.sendPacket(new PlayerRespawnS2CPacket(dim, nouveau.getGeneratorType(), MODE));
-            nouveau.method_18211(this);
+            networkHandler.sendPacket(new PlayerRespawnS2CPacket(nouveau.getDimension(), dim, BiomeAccess.hashSeed(nouveau.getSeed()), this.interactionManager.getGameMode(), this.interactionManager.method_30119(), nouveau.isDebugWorld(), nouveau.isFlat(), true));
+            nouveau.onPlayerChangeDimension(this);
         }
         requestTeleport(x, y, z);
     }
@@ -342,13 +349,13 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
                     .saveRecording(saveFile, new RecordingSaveProgressBar(server, saveFile.getName())).thenRun(() -> {
                         server.getPlayerManager()
                                 .broadcastChatMessage(TextRenderer.render(SReplayMod.getFormats().savedRecordingFile,
-                                        getGameProfile().getName(), saveFile.getName()), false);
+                                        getGameProfile().getName(), saveFile.getName()), MessageType.GAME_INFO, NIL);
                     }).exceptionally(exception -> {
                         exception.printStackTrace();
                         server.getPlayerManager().broadcastChatMessage(
                                 TextRenderer.render(SReplayMod.getFormats().failedToSaveRecordingFile,
                                         getGameProfile().getName(), exception.toString()),
-                                false);
+                                MessageType.GAME_INFO, NIL);
                         return null;
                     });
             if (!async) {
@@ -359,7 +366,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     }
 
     @Override
-    public boolean method_14239() {
+    public boolean isDisconnected() {
         return false;
     }
 
@@ -377,7 +384,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
             } catch (IOException e) {
                 server.getPlayerManager().broadcastChatMessage(
                         TextRenderer.render(SReplayMod.getFormats().failedToStartRecording, getGameProfile().getName()),
-                        true);
+                        MessageType.GAME_INFO, NIL);
                 e.printStackTrace();
             }
         });

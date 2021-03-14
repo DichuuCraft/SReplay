@@ -14,21 +14,27 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import net.minecraft.resource.ResourcePackManager;
+import net.minecraft.resource.ServerResourceManager;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.WorldGenerationProgressListenerFactory;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraft.util.UserCache;
+import net.minecraft.util.registry.DynamicRegistryManager.Impl;
+import net.minecraft.world.SaveProperties;
+import net.minecraft.world.level.storage.LevelStorage.Session;
 
 @Mixin(IntegratedServer.class)
 public abstract class MixinIntegratedServer extends MinecraftServer {
 
-    public MixinIntegratedServer(File gameDir, Proxy proxy, DataFixer dataFixer, CommandManager commandManager,
-            YggdrasilAuthenticationService authService, MinecraftSessionService sessionService,
+    private MixinIntegratedServer(Thread thread, Impl impl, Session session, SaveProperties saveProperties,
+            ResourcePackManager resourcePackManager, Proxy proxy, DataFixer dataFixer,
+            ServerResourceManager serverResourceManager, MinecraftSessionService minecraftSessionService,
             GameProfileRepository gameProfileRepository, UserCache userCache,
-            WorldGenerationProgressListenerFactory worldGenerationProgressListenerFactory, String levelName) {
-        super(gameDir, proxy, dataFixer, commandManager, authService, sessionService, gameProfileRepository, userCache,
-                worldGenerationProgressListenerFactory, levelName);
+            WorldGenerationProgressListenerFactory worldGenerationProgressListenerFactory) {
+        super(thread, impl, session, saveProperties, resourcePackManager, proxy, dataFixer, serverResourceManager,
+                minecraftSessionService, gameProfileRepository, userCache, worldGenerationProgressListenerFactory);
     }
 
     @Inject(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/profiler/DisableableProfiler;pop()V"))

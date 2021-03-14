@@ -36,7 +36,7 @@ public class Util {
     }
 
     public static Text makeBroadcastMsg(String player, String msg){
-        return new LiteralText("[" + player + ": " + msg + "]").setStyle(new Style().setItalic(true).setColor(Formatting.DARK_GRAY));
+        return new LiteralText("[" + player + ": " + msg + "]").setStyle(Style.EMPTY.withItalic(true).withColor(Formatting.DARK_GRAY));
     }
 
     public static Collection<Photographer> getFakes(MinecraftServer server){

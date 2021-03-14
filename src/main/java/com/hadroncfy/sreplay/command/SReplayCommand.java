@@ -12,6 +12,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 
+import net.minecraft.network.MessageType;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.text.Text;
@@ -25,6 +26,7 @@ import java.nio.file.Files;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 import java.util.regex.Matcher;
@@ -111,10 +113,10 @@ public class SReplayCommand {
         if (p != null){
             ctx.getSource().sendFeedback(render(getFormats().botLocation,
                 p.getGameProfile().getName(),
-                String.format("%.0f", p.x),
-                String.format("%.0f", p.y),
-                String.format("%.0f", p.z),
-                p.dimension.getRawId()
+                String.format("%.0f", p.getX()),
+                String.format("%.0f", p.getY()),
+                String.format("%.0f", p.getZ()),
+                p.getServerWorld().getRegistryKey().getValue().getPath()
             ), false);
         }
         return 0;
@@ -165,7 +167,7 @@ public class SReplayCommand {
                 return 1;
             }
             p.getRecorder().removeMarker(id);
-            src.getMinecraftServer().getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().markerRemoved, ctx.getSource().getName(), name, Integer.toString(id + 1)), false);
+            src.getMinecraftServer().getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().markerRemoved, ctx.getSource().getName(), name, Integer.toString(id + 1)), MessageType.GAME_INFO, getSenderUUID(ctx));
         }
         return 0;
     }
@@ -197,7 +199,7 @@ public class SReplayCommand {
             final ChannelFuture ch = SReplayMod.getServer().bind(SReplayMod.getConfig().serverListenAddress, SReplayMod.getConfig().serverPort);
             ch.addListener(future -> {
                 if (future.isSuccess()){
-                    server.getPlayerManager().broadcastChatMessage(SReplayMod.getFormats().serverStarted, true);
+                    server.getPlayerManager().broadcastChatMessage(SReplayMod.getFormats().serverStarted, MessageType.GAME_INFO, getSenderUUID(ctx));
                 }
                 else {
                     src.sendError(render(SReplayMod.getFormats().serverStartFailed, future.cause().getMessage()));
@@ -216,7 +218,7 @@ public class SReplayCommand {
         final ChannelFuture ch = SReplayMod.getServer().stop();
         ch.addListener(future -> {
             if (future.isSuccess()){
-                server.getPlayerManager().broadcastChatMessage(SReplayMod.getFormats().serverStopped, true);
+                server.getPlayerManager().broadcastChatMessage(SReplayMod.getFormats().serverStopped, MessageType.GAME_INFO, getSenderUUID(ctx));
             }
             else {
                 src.sendError(render(SReplayMod.getFormats().serverStopFailed, future.cause().getMessage()));
@@ -274,7 +276,7 @@ public class SReplayCommand {
         if (p != null){
             String name = StringArgumentType.getString(ctx, "marker");
             p.getRecorder().addMarker(name);
-            ctx.getSource().getMinecraftServer().getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().markerAdded, ctx.getSource().getName(), p.getGameProfile().getName(), name), false);
+            ctx.getSource().getMinecraftServer().getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().markerAdded, ctx.getSource().getName(), p.getGameProfile().getName(), name), MessageType.GAME_INFO, getSenderUUID(ctx));
             return 1;
         }
         else {
@@ -286,7 +288,7 @@ public class SReplayCommand {
         Photographer p = requirePlayer(ctx);
         if (p != null){
             p.setPaused(true);
-            ctx.getSource().getMinecraftServer().getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().recordingPaused, ctx.getSource().getName(), p.getGameProfile().getName()), false);
+            ctx.getSource().getMinecraftServer().getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().recordingPaused, ctx.getSource().getName(), p.getGameProfile().getName()), MessageType.GAME_INFO, getSenderUUID(ctx));
             return 1;
         }
         else {
@@ -298,7 +300,7 @@ public class SReplayCommand {
         Photographer p = requirePlayer(ctx);
         if (p != null){
             p.setPaused(false);
-            ctx.getSource().getMinecraftServer().getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().recordingResumed, ctx.getSource().getName(), p.getGameProfile().getName()), false);
+            ctx.getSource().getMinecraftServer().getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().recordingResumed, ctx.getSource().getName(), p.getGameProfile().getName()), MessageType.GAME_INFO, getSenderUUID(ctx));
             return 1;
         }
         else {
@@ -356,7 +358,7 @@ public class SReplayCommand {
                 try {
                     Files.delete(rec.toPath());
                     server.getPlayerManager()
-                        .broadcastChatMessage(render(SReplayMod.getFormats().deletedRecordingFile, src.getName(), rec.getName()), false);
+                        .broadcastChatMessage(render(SReplayMod.getFormats().deletedRecordingFile, src.getName(), rec.getName()), MessageType.GAME_INFO, getSenderUUID(ctx));
                 } catch (IOException e) {
                     e.printStackTrace();
                     server.getPlayerManager().broadcastChatMessage(render(
@@ -364,7 +366,7 @@ public class SReplayCommand {
                         src.getName(),
                         rec.getName(),
                         e
-                    ), false);
+                    ), MessageType.GAME_INFO, getSenderUUID(ctx));
                 }
             });
         } else {
@@ -373,12 +375,21 @@ public class SReplayCommand {
         return 0;
     }
 
+    public static UUID getSenderUUID(CommandContext<ServerCommandSource> ctx){
+        try {
+            return ctx.getSource().getPlayer().getUuid();
+        }
+        catch(CommandSyntaxException e){
+            return UUID.randomUUID();
+        }
+    }
+
     public static int playerTp(CommandContext<ServerCommandSource> ctx) {
         final Photographer p = requirePlayer(ctx);
         if (p != null){
             Vec3d pos = ctx.getSource().getPosition();
-            p.tp(ctx.getSource().getWorld().getDimension().getType(), pos.x, pos.y, pos.z);
-            ctx.getSource().getMinecraftServer().getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().teleportedBotToYou, p.getGameProfile().getName(), ctx.getSource().getName()), true);
+            p.tp(ctx.getSource().getWorld().getRegistryKey(), pos.x, pos.y, pos.z);
+            ctx.getSource().getMinecraftServer().getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().teleportedBotToYou, p.getGameProfile().getName(), ctx.getSource().getName()), MessageType.GAME_INFO, getSenderUUID(ctx));
             LOGGER.info("Teleported {} to {}", p.getGameProfile().getName(), ctx.getSource().getName());
             return 1;
         }
@@ -414,7 +425,7 @@ public class SReplayCommand {
         }
 
         try {
-            Photographer photographer = Photographer.create(pName, server, src.getWorld().getDimension().getType(), src.getPosition(), SReplayMod.getConfig().savePath);
+            Photographer photographer = Photographer.create(pName, server, src.getWorld().getRegistryKey(), src.getPosition(), SReplayMod.getConfig().savePath);
             photographer.connect(saveName);
         } catch (IOException e) {
             src.sendFeedback(render(SReplayMod.getFormats().failedToStartRecording, e.toString()), false);

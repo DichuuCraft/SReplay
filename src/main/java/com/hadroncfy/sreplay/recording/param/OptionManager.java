@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.hadroncfy.sreplay.Lang;
+import com.hadroncfy.sreplay.command.SReplayCommand;
 import com.hadroncfy.sreplay.recording.Photographer;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.BoolArgumentType;
@@ -17,6 +18,7 @@ import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
+import net.minecraft.network.MessageType;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
 
@@ -114,7 +116,7 @@ public class OptionManager {
                                 player.getGameProfile().getName(),
                                 entry.name,
                                 entry.field.get(player.getRecordingParam()).toString()
-                            ), true);
+                            ), MessageType.GAME_INFO, SReplayCommand.getSenderUUID(context));
                         }
                     }
                     catch(InvalidEnumException e){

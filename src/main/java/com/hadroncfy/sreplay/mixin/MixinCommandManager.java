@@ -20,7 +20,7 @@ public abstract class MixinCommandManager {
     private CommandDispatcher<ServerCommandSource> dispatcher;
 
     @Inject(method = "<init>", at = @At("RETURN"))
-    private void onRegister(boolean boolean_1, CallbackInfo ci) {
+    private void onRegister(CommandManager.RegistrationEnvironment env, CallbackInfo ci) {
         SReplayCommand.register(dispatcher);
     }
 }

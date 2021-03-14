@@ -8,6 +8,7 @@ import com.hadroncfy.sreplay.Util;
 import com.hadroncfy.sreplay.Util.Replacer;
 
 import net.minecraft.text.LiteralText;
+import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
 
 public class TextRenderer extends AbstractTextRenderer<TextRenderer> implements Replacer<String> {
@@ -26,7 +27,7 @@ public class TextRenderer extends AbstractTextRenderer<TextRenderer> implements 
     }
 
     @Override
-    protected Text renderString(String s) {
+    protected MutableText renderString(String s) {
         return new LiteralText(Util.replaceAll(VAL_EXP, s, this));
     }
 

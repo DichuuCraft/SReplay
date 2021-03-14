@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
@@ -11,6 +12,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import com.hadroncfy.sreplay.SReplayMod;
+import com.hadroncfy.sreplay.command.SReplayCommand;
 import com.hadroncfy.sreplay.config.TextRenderer;
 import com.hadroncfy.sreplay.mixin.GameStateChangeS2CPacketAccessor;
 import com.hadroncfy.sreplay.mixin.PlayerSpawnS2CPacketAccessor;
@@ -24,10 +26,11 @@ import com.mojang.authlib.GameProfile;
 
 import net.minecraft.SharedConstants;
 import net.minecraft.entity.EntityType;
+import net.minecraft.network.MessageType;
 import net.minecraft.network.NetworkState;
 import net.minecraft.network.Packet;
 import net.minecraft.network.packet.s2c.login.LoginSuccessS2CPacket;
-import net.minecraft.network.packet.s2c.play.ChatMessageS2CPacket;
+import net.minecraft.network.packet.s2c.play.GameMessageS2CPacket;
 import net.minecraft.network.packet.s2c.play.DisconnectS2CPacket;
 import net.minecraft.network.packet.s2c.play.EntityS2CPacket;
 import net.minecraft.network.packet.s2c.play.EntitySetHeadYawS2CPacket;
@@ -98,7 +101,7 @@ public class Recorder implements IPacketListener {
         metaData.date = startTime;
         metaData.mcversion = SharedConstants.getGameVersion().getName();
         server.getPlayerManager()
-            .broadcastChatMessage(TextRenderer.render(SReplayMod.getFormats().startedRecording, profile.getName()), true);
+            .broadcastChatMessage(TextRenderer.render(SReplayMod.getFormats().startedRecording, profile.getName()), MessageType.GAME_INFO, new UUID(0, 0));
 
         // Must contain this packet, otherwise ReplayMod would complain
         savePacket(new LoginSuccessS2CPacket(profile));
@@ -250,16 +253,17 @@ public class Recorder implements IPacketListener {
         if (!isSaving){
             isSaving = true;
             metaData.duration = (int) lastPacket;
-            server.getPlayerManager()
-                    .broadcastChatMessage(TextRenderer.render(SReplayMod.getFormats().savingRecordingFile, profile.getName()), true);
+            server.getPlayerManager().broadcastChatMessage(TextRenderer.render(SReplayMod.getFormats().savingRecordingFile, profile.getName()), MessageType.GAME_INFO, new UUID(0, 0));
             return CompletableFuture.runAsync(() -> {
                 saveMetadata();
                 saveMarkers();
                 saveService.shutdown();
+                boolean interrupted = false;
                 try {
                     saveService.awaitTermination(10, TimeUnit.SECONDS);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+                }
+                catch (InterruptedException e) {
+                    interrupted = true;
                 }
                 try {
                     replayFile.closeAndSave(dest, bar);
@@ -267,6 +271,11 @@ public class Recorder implements IPacketListener {
                 catch(IOException e){
                     e.printStackTrace();
                     throw new CompletionException(e);
+                }
+                finally {
+                    if (interrupted) {
+                        Thread.currentThread().interrupt();
+                    }
                 }
             }, r -> {
                 final Thread t = new Thread(r, "Recording file save thread");
@@ -284,19 +293,16 @@ public class Recorder implements IPacketListener {
     private void setWeather(ForcedWeather weather){
         switch(weather){
             case RAIN:
-                savePacket(new GameStateChangeS2CPacket(2, 0));
-                savePacket(new GameStateChangeS2CPacket(7, 1));
-                savePacket(new GameStateChangeS2CPacket(8, 0));
+                savePacket(new GameStateChangeS2CPacket(GameStateChangeS2CPacket.RAIN_STARTED, 0));
+                savePacket(new GameStateChangeS2CPacket(GameStateChangeS2CPacket.THUNDER_GRADIENT_CHANGED, 0));
                 break;
             case CLEAR:
-                savePacket(new GameStateChangeS2CPacket(1, 0));
-                savePacket(new GameStateChangeS2CPacket(7, 0));
-                savePacket(new GameStateChangeS2CPacket(8, 0));
+                savePacket(new GameStateChangeS2CPacket(GameStateChangeS2CPacket.RAIN_STOPPED, 0));
+                savePacket(new GameStateChangeS2CPacket(GameStateChangeS2CPacket.THUNDER_GRADIENT_CHANGED, 0));
                 break;
             case THUNDER:
-                savePacket(new GameStateChangeS2CPacket(2, 0));
-                savePacket(new GameStateChangeS2CPacket(7, 1));
-                savePacket(new GameStateChangeS2CPacket(8, 1));
+                savePacket(new GameStateChangeS2CPacket(GameStateChangeS2CPacket.RAIN_STARTED, 0));
+                savePacket(new GameStateChangeS2CPacket(GameStateChangeS2CPacket.THUNDER_GRADIENT_CHANGED, 1));
                 break;
             default:
                 break;
@@ -331,12 +337,15 @@ public class Recorder implements IPacketListener {
                 p = new WorldTimeUpdateS2CPacket(p2.getTime(), param.dayTime, false);
             }
             if (param.forcedWeather != ForcedWeather.NONE && p instanceof GameStateChangeS2CPacket){
-                int r = ((GameStateChangeS2CPacketAccessor)p).getReason();
-                if (r == 1 || r == 2 || r == 7 || r == 8){
-                    return;
-                }
+                GameStateChangeS2CPacket.Reason r = ((GameStateChangeS2CPacketAccessor)p).getReason();
+                if (
+                    r == GameStateChangeS2CPacket.RAIN_STARTED
+                    || r == GameStateChangeS2CPacket.RAIN_STOPPED
+                    || r == GameStateChangeS2CPacket.THUNDER_GRADIENT_CHANGED
+                    || r == GameStateChangeS2CPacket.RAIN_GRADIENT_CHANGED
+                ) return;
             }
-            if (param.ignoreChat && p instanceof ChatMessageS2CPacket){
+            if (param.ignoreChat && p instanceof GameMessageS2CPacket){
                 return;
             }
             savePacket(p);

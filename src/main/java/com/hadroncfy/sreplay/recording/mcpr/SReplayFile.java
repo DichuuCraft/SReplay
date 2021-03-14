@@ -27,7 +27,7 @@ import net.minecraft.SharedConstants;
 import net.minecraft.network.NetworkSide;
 import net.minecraft.network.NetworkState;
 import net.minecraft.network.Packet;
-import net.minecraft.util.PacketByteBuf;
+import net.minecraft.network.PacketByteBuf;
 
 public class SReplayFile implements IReplayFile {
     private static final String RECORDING_FILE = "recording.tmcpr";
