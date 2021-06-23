@@ -116,7 +116,7 @@ public class OptionManager {
                                 player.getGameProfile().getName(),
                                 entry.name,
                                 entry.field.get(player.getRecordingParam()).toString()
-                            ), MessageType.GAME_INFO, SReplayCommand.getSenderUUID(context));
+                            ), MessageType.CHAT, SReplayCommand.getSenderUUID(context));
                         }
                     }
                     catch(InvalidEnumException e){

@@ -101,7 +101,7 @@ public class Recorder implements IPacketListener {
         metaData.date = startTime;
         metaData.mcversion = SharedConstants.getGameVersion().getName();
         server.getPlayerManager()
-            .broadcastChatMessage(TextRenderer.render(SReplayMod.getFormats().startedRecording, profile.getName()), MessageType.GAME_INFO, new UUID(0, 0));
+            .broadcastChatMessage(TextRenderer.render(SReplayMod.getFormats().startedRecording, profile.getName()), MessageType.CHAT, new UUID(0, 0));
 
         // Must contain this packet, otherwise ReplayMod would complain
         savePacket(new LoginSuccessS2CPacket(profile));
@@ -253,7 +253,7 @@ public class Recorder implements IPacketListener {
         if (!isSaving){
             isSaving = true;
             metaData.duration = (int) lastPacket;
-            server.getPlayerManager().broadcastChatMessage(TextRenderer.render(SReplayMod.getFormats().savingRecordingFile, profile.getName()), MessageType.GAME_INFO, new UUID(0, 0));
+            server.getPlayerManager().broadcastChatMessage(TextRenderer.render(SReplayMod.getFormats().savingRecordingFile, profile.getName()), MessageType.CHAT, new UUID(0, 0));
             return CompletableFuture.runAsync(() -> {
                 saveMetadata();
                 saveMarkers();

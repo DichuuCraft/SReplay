@@ -258,11 +258,11 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
                 final String name = getGameProfile().getName();
                 if (trackedPlayers.isEmpty() && !recorder.isRecordingPaused()) {
                     recorder.pauseRecording();
-                    server.getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().autoPaused, name), MessageType.GAME_INFO, NIL);
+                    server.getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().autoPaused, name), MessageType.CHAT, NIL);
                 }
                 if (!trackedPlayers.isEmpty() && recorder.isRecordingPaused()) {
                     recorder.resumeRecording();
-                    server.getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().autoResumed, name), MessageType.GAME_INFO, NIL);
+                    server.getPlayerManager().broadcastChatMessage(render(SReplayMod.getFormats().autoResumed, name), MessageType.CHAT, NIL);
                 }
             } else {
                 recorder.resumeRecording();
@@ -349,13 +349,13 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
                     .saveRecording(saveFile, new RecordingSaveProgressBar(server, saveFile.getName())).thenRun(() -> {
                         server.getPlayerManager()
                                 .broadcastChatMessage(TextRenderer.render(SReplayMod.getFormats().savedRecordingFile,
-                                        getGameProfile().getName(), saveFile.getName()), MessageType.GAME_INFO, NIL);
+                                        getGameProfile().getName(), saveFile.getName()), MessageType.CHAT, NIL);
                     }).exceptionally(exception -> {
                         exception.printStackTrace();
                         server.getPlayerManager().broadcastChatMessage(
                                 TextRenderer.render(SReplayMod.getFormats().failedToSaveRecordingFile,
                                         getGameProfile().getName(), exception.toString()),
-                                MessageType.GAME_INFO, NIL);
+                                MessageType.CHAT, NIL);
                         return null;
                     });
             if (!async) {
@@ -384,7 +384,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
             } catch (IOException e) {
                 server.getPlayerManager().broadcastChatMessage(
                         TextRenderer.render(SReplayMod.getFormats().failedToStartRecording, getGameProfile().getName()),
-                        MessageType.GAME_INFO, NIL);
+                        MessageType.CHAT, NIL);
                 e.printStackTrace();
             }
         });
