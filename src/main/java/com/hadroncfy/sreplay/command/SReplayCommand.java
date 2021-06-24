@@ -32,7 +32,7 @@ import java.util.function.BiConsumer;
 import java.util.regex.Matcher;
 
 import static net.minecraft.server.command.CommandManager.argument;
-import static net.minecraft.server.command.CommandSource.suggestMatching;
+import static net.minecraft.command.CommandSource.suggestMatching;
 import static com.hadroncfy.sreplay.recording.Photographer.MCPR;
 import static com.hadroncfy.sreplay.config.TextRenderer.render;
 import static com.hadroncfy.sreplay.SReplayMod.getConfig;

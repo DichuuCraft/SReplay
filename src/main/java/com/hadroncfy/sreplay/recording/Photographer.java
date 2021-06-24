@@ -89,7 +89,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         ServerWorld world = server.getWorld(dim);
         ServerPlayerInteractionManager im = new ServerPlayerInteractionManager(world);
         Photographer ret = new Photographer(server, world, profile, im, outputDir, param);
-        ret.updatePosition(pos.x, pos.y, pos.z);
+        ret.setPosition(pos.x, pos.y, pos.z);
         ((PlayerManagerAccessor) server.getPlayerManager()).getSaveHandler().savePlayerData(ret);
         return ret;
     }
@@ -144,7 +144,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     private void reloadChunks(int oldDistance, int newDistance) {
         ServerChunkManager chunkManager = getServerWorld().getChunkManager();
         ThreadedAnvilChunkStorageAccessor acc = (ThreadedAnvilChunkStorageAccessor) chunkManager.threadedAnvilChunkStorage;
-        ChunkSectionPos pos = this.getCameraPosition();
+        ChunkSectionPos pos = this.getWatchedSection();
         int x0 = pos.getSectionX();
         int z0 = pos.getSectionZ();
         int r = oldDistance > newDistance ? oldDistance : newDistance;
@@ -183,8 +183,8 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
         trackedPlayers.clear();
         server.getPlayerManager().onPlayerConnect(connection, this);
         syncParams();
-        interactionManager.method_30118(MODE);// XXX: is this correct?
-        getServerWorld().getChunkManager().updateCameraPosition(this);
+        interactionManager.setGameMode(MODE);// XXX: is this correct?
+        getServerWorld().getChunkManager().updatePosition(this);
 
         int d = this.server.getPlayerManager().getViewDistance();
         if (d != this.rparam.watchDistance) {
@@ -214,7 +214,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
     public void tick() {
         if (getServer().getTicks() % 10 == 0) {
             networkHandler.syncWithPlayerPosition();
-            getServerWorld().getChunkManager().updateCameraPosition(this);
+            getServerWorld().getChunkManager().updatePosition(this);
         }
         super.tick();
         super.playerTick();
@@ -320,7 +320,7 @@ public class Photographer extends ServerPlayerEntity implements ISizeLimitExceed
             setWorld(nouveau);
             server.getPlayerManager().sendWorldInfo(this, nouveau);
             interactionManager.setWorld(nouveau);
-            networkHandler.sendPacket(new PlayerRespawnS2CPacket(nouveau.getDimension(), dim, BiomeAccess.hashSeed(nouveau.getSeed()), this.interactionManager.getGameMode(), this.interactionManager.method_30119(), nouveau.isDebugWorld(), nouveau.isFlat(), true));
+            networkHandler.sendPacket(new PlayerRespawnS2CPacket(nouveau.getDimension(), dim, BiomeAccess.hashSeed(nouveau.getSeed()), this.interactionManager.getGameMode(), this.interactionManager.getPreviousGameMode(), nouveau.isDebugWorld(), nouveau.isFlat(), true));
             nouveau.onPlayerChangeDimension(this);
         }
         requestTeleport(x, y, z);

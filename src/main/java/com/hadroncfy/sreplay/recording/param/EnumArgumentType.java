@@ -11,7 +11,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 
-import static net.minecraft.server.command.CommandSource.suggestMatching;
+import static net.minecraft.command.CommandSource.suggestMatching;
 
 public class EnumArgumentType<T extends Enum<T>> implements ArgumentType<T> {
     private final Class<T> clazz;

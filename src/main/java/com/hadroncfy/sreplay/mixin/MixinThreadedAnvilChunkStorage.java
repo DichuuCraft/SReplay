@@ -37,7 +37,7 @@ public abstract class MixinThreadedAnvilChunkStorage {
         return getRealViewDistance(player, watchDistance);
     }
     
-    @Redirect(method = "updateCameraPosition", at = @At(
+    @Redirect(method = "updatePosition", at = @At(
         value = "FIELD",
         target = "Lnet/minecraft/server/world/ThreadedAnvilChunkStorage;watchDistance:I"
     ))
